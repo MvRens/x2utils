@@ -22,18 +22,20 @@ uses
   //:: SortColumn for the second time, so be sure not to rely on that.
   procedure SortColumn(const AHeader: TVTHeader;
                        const AColumn: TColumnIndex;
-                       const ASortColor: TColor = clNone);
+                       const ASortColor: TColor = clNone;
+                       const AApplySort: Boolean = True);
 
   //:$ Calculates the position of an image in a virtual string tree.
   function CalcImagePos(const ATree: TVirtualStringTree;
                         const ANode: PVirtualNode;
-                        const AItemRect: TRect): TPoint;
+                        const ACellRect: TRect): TPoint;
 
 implementation
 
 procedure SortColumn(const AHeader: TVTHeader;
                      const AColumn: TColumnIndex;
-                     const ASortColor: TColor = clNone);
+                     const ASortColor: TColor;
+                     const AApplySort: Boolean);
 begin
   with AHeader do
   begin
@@ -45,12 +47,13 @@ begin
           Tag   := 0;
         end;
 
-    if SortColumn = AColumn then
-      SortDirection := TSortDirection(1 - Integer(SortDirection))
-    else begin
-      SortColumn    := AColumn;
-      SortDirection := sdAscending;
-    end;
+    if AApplySort then
+      if SortColumn = AColumn then
+        SortDirection := TSortDirection(1 - Integer(SortDirection))
+      else begin
+        SortColumn    := AColumn;
+        SortDirection := sdAscending;
+      end;
 
     if ASortColor <> clNone then
       with Columns[SortColumn] do
@@ -63,16 +66,19 @@ end;
 
 function CalcImagePos(const ATree: TVirtualStringTree;
                       const ANode: PVirtualNode;
-                      const AItemRect: TRect): TPoint;
+                      const ACellRect: TRect): TPoint;
 var
   pNode:      PVirtualNode;
 
 begin
-  Result  := AItemRect.TopLeft;
+  Result  := ACellRect.TopLeft;
 
   with ATree do
   begin
     pNode := ANode;
+    if Assigned(pNode) and not (toShowRoot in ATree.TreeOptions.PaintOptions) then
+      pNode := pNode^.Parent;
+      
     while Assigned(pNode) and (pNode <> ATree.RootNode) do
     begin
       Inc(Result.X, Indent);
