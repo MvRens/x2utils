@@ -44,8 +44,8 @@ uses
 
 type
   //:$ Enumeration of the recognized Operating System versions
-  TX2OSVersion  =(osUnknown, osWin95, osWin98, osWinME, osWinNT3, osWinNT4,
-                  osWin2K, osWinXP, osWin2003);
+  TX2OSVersion  =(osWin95, osWin98, osWinME, osWinNT3, osWinNT4,
+                  osWin2K, osWinXP, osWin2003, osUnknown);
 
   {
     :$ Contains extended version information for the Operating System
