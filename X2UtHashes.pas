@@ -415,8 +415,11 @@ begin
 end;
 
 function TX2CustomHash.Exists;
+var
+  pNode:        PX2BTreeNode;
+
 begin
-  Result  := inherited Exists(Hash(AKey), ASetCursor);
+  Result  := Assigned(LookupItem(AKey, pNode, False, ASetCursor));
 end;
 
 
