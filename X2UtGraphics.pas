@@ -47,6 +47,16 @@ uses
   }
   procedure AAOwned(const AOwner: TComponent);
 
+  {
+    :$ Blends the two colors using the specified alpha value
+
+    :: The alpha determines how much of the foreground color is applied to the
+    :: background color. The alpha value must be between 0 and 255 (where 0
+    :: indicates full transparency and 255 an opaque foreground).
+  }
+  function BlendColors(const ABackground, AForeground: TColor;
+                       const AAlpha: Byte): TColor;
+
 
 implementation
 uses
@@ -135,6 +145,26 @@ begin
   for iControl  := 0 to AOwner.ComponentCount - 1 do
     if AOwner.Components[iControl] is TControl then
       AAControl(TControl(AOwner.Components[iControl]));
+end;
+
+
+function BlendColors;
+var
+  cBack:        Cardinal;
+  cFore:        Cardinal;
+  bBack:        Byte;
+
+begin
+  cBack   := ColorToRGB(ABackground);
+  cFore   := ColorToRGB(AForeground);
+  bBack   := 255 - AAlpha;
+
+  Result  := RGB(((GetRValue(cBack) * bBack) +
+                  (GetRValue(cFore) * AAlpha)) shr 8,
+                 ((GetGValue(cBack) * bBack) +
+                  (GetGValue(cFore) * AAlpha)) shr 8,
+                 ((GetBValue(cBack) * bBack) +
+                  (GetBValue(cFore) * AAlpha)) shr 8);
 end;
 
 end.
