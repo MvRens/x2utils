@@ -109,6 +109,10 @@ type
     FMinor:           Integer;
     FRelease:         Integer;
     FBuild:           Integer;
+    FDebug:           Boolean;
+    FPrerelease:      Boolean;
+    FSpecial:         Boolean;
+    FPrivate:         Boolean;
     FStrings:         TX2AppVersionStrings;
   public
     constructor Create();
@@ -116,19 +120,35 @@ type
 
     //:$ Contains the application's Major version
     //:! Defaults to 0 if no version information is available
-    property Major:           Integer               read FMajor     write FMajor;
+    property Major:           Integer               read FMajor       write FMajor;
 
     //:$ Contains the application's Minor version
     //:! Defaults to 0 if no version information is available
-    property Minor:           Integer               read FMinor     write FMinor;
+    property Minor:           Integer               read FMinor       write FMinor;
 
     //:$ Contains the application's Release number
     //:! Defaults to 0 if no version information is available
-    property Release:         Integer               read FRelease   write FRelease;
+    property Release:         Integer               read FRelease     write FRelease;
 
     //:$ Contains the application's Build number
     //:! Defaults to 0 if no version information is available
-    property Build:           Integer               read FBuild     write FBuild;
+    property Build:           Integer               read FBuild       write FBuild;
+
+    //:$ Contains the value of the Debug Build flag
+    //:! Defaults to False if no version information is available
+    property Debug:           Boolean               read FDebug       write FDebug;
+
+    //:$ Contains the value of the Prerelease Build flag
+    //:! Defaults to False if no version information is available
+    property Prerelease:      Boolean               read FPrerelease  write FPrerelease;
+
+    //:$ Contains the value of the Special Build flag
+    //:! Defaults to False if no version information is available
+    property Special:         Boolean               read FSpecial     write FSpecial;
+
+    //:$ Contains the value of the Private Build flag
+    //:! Defaults to False if no version information is available
+    property Private:         Boolean               read FPrivate     write FPrivate;
 
     //:$ Contains extended version information
     property Strings:         TX2AppVersionStrings  read FStrings;
@@ -351,10 +371,14 @@ begin
         // Get version numbers
         with FVersion do begin
           if VerQueryValue(pBuffer, '\', Pointer(pInfo), dInfo) then begin
-            Major   := HiWord(pInfo^.dwFileVersionMS);
-            Minor   := LoWord(pInfo^.dwFileVersionMS);
-            Release := HiWord(pInfo^.dwFileVersionLS);
-            Build   := LoWord(pInfo^.dwFileVersionLS);
+            Major       := HiWord(pInfo^.dwFileVersionMS);
+            Minor       := LoWord(pInfo^.dwFileVersionMS);
+            Release     := HiWord(pInfo^.dwFileVersionLS);
+            Build       := LoWord(pInfo^.dwFileVersionLS);
+            Debug       := ((pInfo^.dwFileFlags and VS_FF_DEBUG) = VS_FF_DEBUG);
+            Prerelease  := ((pInfo^.dwFileFlags and VS_FF_PRERELEASE) = VS_FF_PRERELEASE);
+            Special     := ((pInfo^.dwFileFlags and VS_FF_SPECIALBUILD) = VS_FF_SPECIALBUILD);
+            Private     := ((pInfo^.dwFileFlags and VS_FF_PRIVATEBUILD) = VS_FF_PRIVATEBUILD);
           end;
 
           // Get additional version information using RTTI
