@@ -283,6 +283,8 @@ end;
 
 function TX2RegistrySettings.ValueExists;
 begin
+  Result  := False;
+  
   if OpenRead() then
     Result  := FData.ValueExists(AName);
 end;
