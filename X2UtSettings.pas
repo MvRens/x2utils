@@ -371,11 +371,10 @@ var
 
 begin
   pDefine := FFactory.GetDefine(FSection, AName);
+  vValue  := AValue;
+  
   if Assigned(pDefine) then
-  begin
-    vValue  := AValue;
     pDefine.Action(saWrite, FSection, AName, vValue);
-  end;
 
   InternalWriteBool(AName, vValue);
 end;
@@ -387,11 +386,10 @@ var
 
 begin
   pDefine := FFactory.GetDefine(FSection, AName);
+  vValue  := AValue;
+
   if Assigned(pDefine) then
-  begin
-    vValue  := AValue;
     pDefine.Action(saWrite, FSection, AName, vValue);
-  end;
 
   InternalWriteFloat(AName, vValue);
 end;
@@ -403,11 +401,10 @@ var
 
 begin
   pDefine := FFactory.GetDefine(FSection, AName);
+  vValue  := AValue;
+
   if Assigned(pDefine) then
-  begin
-    vValue  := AValue;
     pDefine.Action(saWrite, FSection, AName, vValue);
-  end;
 
   InternalWriteInteger(AName, vValue);
 end;
@@ -419,11 +416,10 @@ var
 
 begin
   pDefine := FFactory.GetDefine(FSection, AName);
+  vValue  := AValue;
+
   if Assigned(pDefine) then
-  begin
-    vValue  := AValue;
     pDefine.Action(saWrite, FSection, AName, vValue);
-  end;
 
   InternalWriteInteger(AName, vValue);
 end;
