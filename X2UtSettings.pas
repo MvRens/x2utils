@@ -209,7 +209,7 @@ begin
     if Assigned(pDefine) then
       Result  := pDefine.Value
     else
-      raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName])
+      raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
 
   if Assigned(pDefine) then
   begin
