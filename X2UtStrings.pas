@@ -36,6 +36,9 @@ type
   //:$ Splits a string on the specified delimiter
   procedure Split(const ASource, ADelimiter: String; out ADest: TSplitArray);
 
+  //:$ Appends the strings with the specified glue string
+  function Join(const ASource: TSplitArray; const AGlue: String): String;
+
 implementation
 uses
   SysUtils;
@@ -227,6 +230,53 @@ begin
       break;
     end;
   until False;
+end;
+
+function Join;
+var
+  iGlue:          Integer;
+  iHigh:          Integer;
+  iItem:          Integer;
+  iLength:        Integer;
+  pGlue:          PChar;
+  pPos:           PChar;
+
+begin
+  if High(ASource) = -1 then
+  begin
+    Result  := '';
+    exit;
+  end;
+
+  iGlue   := Length(AGlue);
+  pGlue   := PChar(AGlue);
+  iLength := -iGlue;
+
+  // First run: calculate the size we need to reserve (two loops should
+  // generally be more efficient than a lot of memory resizing)
+  iHigh := High(ASource);
+  for iItem := iHigh downto 0 do
+    Inc(iLength, Length(ASource[iItem]) + iGlue);
+
+  SetLength(Result, iLength);
+  pPos    := PChar(Result);
+  Inc(pPos, Length(Result));
+
+  // Copy last item
+  iLength := Length(ASource[iHigh]);
+  Dec(pPos, iLength);
+  Move(PChar(ASource[iHigh])^, pPos^, iLength);
+
+  // Copy remaining items and glue strings
+  for iItem := iHigh - 1 downto 0 do
+  begin
+    Dec(pPos, iGlue);
+    Move(pGlue^, pPos^, iGlue);
+
+    iLength := Length(ASource[iItem]);
+    Dec(pPos, iLength);
+    Move(PChar(ASource[iItem])^, pPos^, iLength);
+  end;
 end;
 
 end.
