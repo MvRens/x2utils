@@ -206,16 +206,18 @@ begin
   pDefine := FFactory.GetDefine(FSection, AName);
 
   if not InternalReadBool(AName, Result) then
+  begin
     if Assigned(pDefine) then
       Result  := pDefine.Value
     else
-      raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
+      raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName])
 
-  if Assigned(pDefine) then
-  begin
-    vValue  := Result;
-    pDefine.Action(saRead, FSection, AName, vValue);
-    Result  := vValue;
+    if Assigned(pDefine) then
+    begin
+      vValue  := Result;
+      pDefine.Action(saRead, FSection, AName, vValue);
+      Result  := vValue;
+    end;
   end;
 end;
 

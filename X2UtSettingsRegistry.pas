@@ -53,7 +53,7 @@ type
     procedure DeleteValue(const AName: String); override;
   public
     constructor CreateInit(const AFactory: TX2SettingsFactory;
-                           const ASection: String;
+                           const AKey, ASection: String;
                            const ARoot: Cardinal);
     destructor Destroy(); override;
   end;
@@ -86,7 +86,7 @@ uses
 ========================================}
 function TX2RegistrySettingsFactory.GetSection;
 begin
-  Result  := TX2RegistrySettings.CreateInit(Self, ASection, FRoot);
+  Result  := TX2RegistrySettings.CreateInit(Self, FKey, ASection, FRoot);
 end;
 
 
@@ -100,7 +100,7 @@ begin
   FData         := TRegistry.Create();
   FData.RootKey := ARoot;
 
-  FKey          := IncludeTrailingPathDelimiter(FKey) +
+  FKey          := IncludeTrailingPathDelimiter(AKey) +
                       StringReplace(ASection, '.', '\', [rfReplaceAll]);
 end;
 
