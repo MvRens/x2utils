@@ -21,13 +21,22 @@ type
    * who their parent is. It costs 4 bytes... but that's only 4 megabytes
    * overhead for each million nodes, not much of a burden nowadays.
   *}
-  RX2BTNode           = ^PX2BTNode;
+  TX2BTLinks          = array[0..11] of Byte;
   PX2BTNode           = ^TX2BTNode;
   TX2BTNode           = record
     Key:          Cardinal;
-    Parent:       PX2BTNode;
-    Left:         PX2BTNode;
-    Right:        PX2BTNode;
+
+    case Boolean of
+      True:
+        (
+          Parent:   PX2BTNode;
+          Left:     PX2BTNode;
+          Right:    PX2BTNode;
+        );
+      False:
+        (
+          Links:    TX2BTLinks;
+        );
   end;
 
 
@@ -37,17 +46,17 @@ type
   *}
   TX2BTCustomCursor   = class(TObject)
   private
-    FRoot:        RX2BTNode;
+    FRoot:        PX2BTNode;
   protected
-    function GetCurrentNode(): RX2BTNode; virtual; abstract;
+    function GetCurrentNode(): PX2BTNode; virtual; abstract;
     function GetEof(): Boolean; virtual; abstract;
   public
-    constructor Create(const ARoot: RX2BTNode); virtual;
+    constructor Create(const ARoot: PX2BTNode); virtual;
 
     procedure First(); virtual; abstract;
     procedure Next(); virtual; abstract;
 
-    property CurrentNode:     RX2BTNode read GetCurrentNode;
+    property CurrentNode:     PX2BTNode read GetCurrentNode;
     property Eof:             Boolean   read GetEof;
   end;
 
@@ -61,9 +70,9 @@ type
   *}
   TX2BTDefaultCursor  = class(TX2BTCustomCursor)
   private
-    FNode:        RX2BTNode;
+    FNode:        PX2BTNode;
   protected
-    function GetCurrentNode(): RX2BTNode; override;
+    function GetCurrentNode(): PX2BTNode; override;
     function GetEof(): Boolean; override;
   public
     procedure First(); override;
@@ -80,28 +89,30 @@ type
   private
     FCursor:      TX2BTCustomCursor;
     FRoot:        PX2BTNode;
-    FLastNode:    RX2BTNode;
+    FLastNode:    PX2BTNode;
 
-    function GetRoot(): RX2BTNode;
     function GetCurrentKey(): Cardinal;
     function GetEof(): Boolean;
   protected
     procedure CursorNeeded();
+    procedure InvalidateCursor();
 
-    property Root:    RX2BTNode read GetRoot;
+    //property Root:    PX2BTNode read FRoot  write FRoot;
   protected
     // Methods which don't really need to be virtual
     // (if you have a good reason; share it with me so I can make it
     // virtual, until then it's kept normal for performance reasons)
     procedure ClearNodes();
 
-    function FindLowestNode(const ANode: RX2BTNode): RX2BTNode;
-    function FindHighestNode(const ANode: RX2BTNode): RX2BTNode;
-    function FindNode(const AKey: Cardinal; out AParent: RX2BTNode): RX2BTNode;
-    function FindNodeOnly(const AKey: Cardinal): RX2BTNode;
+    function FindLowestNode(const ANode: PX2BTNode): PX2BTNode;
+    function FindHighestNode(const ANode: PX2BTNode): PX2BTNode;
+    function FindNode(const AKey: Cardinal; out AParent: PX2BTNode): PX2BTNode;
+    function FindNodeOnly(const AKey: Cardinal): PX2BTNode;
 
     function LeftChild(const ANode: PX2BTNode): Boolean;
     function RightChild(const ANode: PX2BTNode): Boolean;
+
+    procedure SwapNodes(const ANode1, ANode2: PX2BTNode);
 
     // Virtual methods (commonly needed in descendants)
     function GetCursorClass(): TX2BTCursorClass; virtual;
@@ -112,7 +123,7 @@ type
     procedure InsertNode(const AKey: Cardinal); virtual;
     procedure DeleteNode(const AKey: Cardinal); virtual;
 
-    procedure DeleteCleanNode(const ANode: PX2BTNode); virtual;
+    procedure DeleteCleanNode(var ANode: PX2BTNode); virtual;
   public
     constructor Create(); virtual;
     destructor Destroy(); override;
@@ -173,9 +184,6 @@ type
   end;
 
 implementation
-uses
-  Dialogs;
-
 resourcestring
   RSBTKeyExists   = 'The key "%d" already exists in the tree.';
   RSBTKeyNotFound = 'The key "%d" could not be found in the tree.';
@@ -210,25 +218,25 @@ begin
   if Eof then
     raise EBTCursorEof.Create(RSBTCursorEof);
 
-  if Assigned(FNode^^.Left) then
+  if Assigned(FNode^.Left) then
     // Node has a left child
-    FNode := @FNode^^.Left
-  else if Assigned(FNode^^.Right) then
+    FNode := FNode^.Left
+  else if Assigned(FNode^.Right) then
     // Node has a right child
-    FNode := @FNode^^.Right
+    FNode := FNode^.Right
   else
   begin
     // Traverse up the path. If we encounter a left direction, it means we
     // can attempt to search the right part of that parent node.
     repeat
-      pChild  := FNode^;
-      FNode   := @FNode^^.Parent;
+      pChild  := FNode;
+      FNode   := FNode^.Parent;
 
-      if Assigned(FNode^) then
+      if Assigned(FNode) then
       begin
-        if (FNode^^.Left = pChild) and Assigned(FNode^^.Right) then
+        if (FNode^.Left = pChild) and Assigned(FNode^.Right) then
         begin
-          FNode := @FNode^^.Right;
+          FNode := FNode^.Right;
           break;
         end;
       end else
@@ -248,7 +256,7 @@ end;
 
 function TX2BTDefaultCursor.GetEof;
 begin
-  Result  := (not Assigned(FNode)) or (not Assigned(FNode^));
+  Result  := not Assigned(FNode);
 end;
 
 
@@ -279,7 +287,7 @@ end;
 
 function TX2BinaryTree.Exists;
 begin
-  Result  := Assigned(FindNodeOnly(AKey)^);
+  Result  := Assigned(FindNodeOnly(AKey));
 end;
 
 procedure TX2BinaryTree.Insert;
@@ -313,14 +321,10 @@ procedure TX2BinaryTree.AllocateNode;
 begin
   GetMem(ANode, SizeOf(TX2BTNode));
   FillChar(ANode^, SizeOf(TX2BTNode), #0);
-
-  ShowMessage('Allocating: ' + IntToStr(Integer(ANode)));
 end;
 
 procedure TX2BinaryTree.DeallocateNode;
 begin
-  ShowMessage('Deallocating: ' + IntToStr(Integer(ANode)));
-
   FreeMem(ANode, SizeOf(TX2BTNode));
   ANode := nil;
 end;
@@ -332,7 +336,7 @@ var
   pParent:    PX2BTNode;
 
 begin
-  pNode := Root^;
+  pNode := FRoot;;
 
   while Assigned(pNode) do
   begin
@@ -361,7 +365,7 @@ begin
   end;
 
   FLastNode := nil;
-  Root^     := nil;
+  FRoot     := nil;
 end;
 
 
@@ -369,23 +373,25 @@ function TX2BinaryTree.FindHighestNode;
 begin
   Result  := ANode;
 
-  while Assigned(Result^) and Assigned(Result^^.Right) do
-    Result  := @Result^^.Right;
+  while Assigned(Result) and Assigned(Result^.Right) do
+    Result  := Result^.Right;
 end;
 
 function TX2BinaryTree.FindLowestNode;
 begin
   Result  := ANode;
 
-  while Assigned(Result^) and Assigned(Result^^.Left) do
-    Result  := @Result^^.Left;
+  while Assigned(Result) and Assigned(Result^.Left) do
+    Result  := Result^.Left;
 end;
 
 function TX2BinaryTree.FindNode;
+var
+  pNode:        PX2BTNode;
+
 begin
   // Quick check; was this node found previously
-  if Assigned(FLastNode) and Assigned(FLastNode^) and
-     (FLastNode^^.Key = AKey) then
+  if Assigned(FLastNode) and (FLastNode^.Key = AKey) then
   begin
     Result  := FLastNode;
     exit;
@@ -393,28 +399,31 @@ begin
 
   AParent   := nil;
   FLastNode := nil;
+  Result    := nil;
+  pNode     := FRoot;
 
-  Result    := Root;
-  while Assigned(Result^) do
-    if AKey = Result^^.Key then
-      break
-    else
+  while Assigned(pNode) do
+    if AKey = pNode^.Key then
     begin
-      AParent := Result;
+      Result  := pNode;
+      break;
+    end else
+    begin
+      AParent := pNode;
 
-      if AKey < Result^^.Key then
-        Result  := @Result^^.Left
+      if AKey < pNode^.Key then
+        pNode := pNode^.Left
       else
-        Result  := @Result^^.Right;
+        pNode := pNode^.Right;
     end;
 
-  if Assigned(Result^) then
+  if Assigned(Result) then
     FLastNode := Result;
 end;
 
 function TX2BinaryTree.FindNodeOnly;
 var
-  pDummy:       RX2BTNode;
+  pDummy:       PX2BTNode;
 
 begin
   Result  := FindNode(AKey, pDummy);
@@ -433,34 +442,81 @@ begin
 end;
 
 
+procedure TX2BinaryTree.SwapNodes;
+  procedure FixLinks(const ANode, AOld: PX2BTNode);
+  begin
+    if Assigned(ANode^.Parent) then
+      if ANode^.Parent^.Left = AOld then
+        ANode^.Parent^.Left   := ANode
+      else
+        ANode^.Parent^.Right  := ANode;
+
+    if Assigned(ANode^.Left) then
+      ANode^.Left^.Parent     := ANode;
+
+    if Assigned(ANode^.Right) then
+      ANode^.Right^.Parent    := ANode;
+  end;
+
+var
+  pBuffer:      TX2BTLinks;
+
+begin
+  pBuffer       := ANode1.Links;
+  ANode1.Links  := ANode2.Links;
+  ANode2.Links  := pBuffer;
+
+  FixLinks(ANode1, ANode2);
+  FixLinks(ANode2, ANode1);
+
+  if FRoot = ANode1 then
+    FRoot       := ANode2
+  else if FRoot = ANode2 then
+    FRoot       := ANode1;
+end;
+
+
 procedure TX2BinaryTree.InsertNode;
 var
-  pNode:      RX2BTNode;
-  pParent:    RX2BTNode;
+  pNode:      PX2BTNode;
+  pParent:    PX2BTNode;
 
 begin
   pNode := FindNode(AKey, pParent);
-  if Assigned(pNode^) then
+  if Assigned(pNode) then
     raise EBTKeyExists.CreateFmt(RSBTKeyExists, [AKey]);
 
-  AllocateNode(pNode^);
+  InvalidateCursor();
+  AllocateNode(pNode);
   FLastNode       := pNode;
-  pNode^^.Key     := AKey;
+  if not Assigned(FRoot) then
+    FRoot         := pNode;
+    
+  pNode^.Key      := AKey;
 
   if Assigned(pParent) then
-    pNode^^.Parent  := pParent^;
+  begin
+    pNode^.Parent     := pParent;
+
+    if AKey < pParent^.Key then
+      pParent^.Left   := pNode
+    else
+      pParent^.Right  := pNode;
+  end;
 end;
 
 procedure TX2BinaryTree.DeleteNode;
 var
-  pNode:      RX2BTNode;
+  pNode:      PX2BTNode;
+  pLowest:    PX2BTNode;
 
 begin
-  //! Implement DeleteNode
   pNode := FindNodeOnly(AKey);
-  if not Assigned(pNode^) then
+  if not Assigned(pNode) then
     raise EBTKeyNotFound.CreateFmt(RSBTKeyNotFound, [AKey]);
 
+  InvalidateCursor();
+  
   // If the node to be deleted has either one or no branch, it can simply be
   // taken out of the chain. If it has two branches, find the lowest key on
   // the right branch and swap it.
@@ -472,13 +528,14 @@ begin
   //  2     5   |     >>>     2     5
   // 1 3   4 6  |            1 3     6
   //       +----+
-  if Assigned(pNode^^.Left) and Assigned(pNode^^.Right) then
+  if Assigned(pNode^.Left) and Assigned(pNode^.Right) then
   begin
-    exit;
+    pLowest := FindLowestNode(pNode^.Right);
+    SwapNodes(pNode, pLowest);
   end;
 
   // At this point, the node is a leaf node or has only one branch
-  DeleteCleanNode(pNode^);
+  DeleteCleanNode(pNode);
 end;
 
 procedure TX2BinaryTree.DeleteCleanNode;
@@ -510,15 +567,22 @@ begin
   if Assigned(pChild) then
     pChild^.Parent    := pParent;
 
-  pChild  := ANode;
-  DeallocateNode(pChild);
+  if ANode = FRoot then
+    FRoot := pChild;
+    
+  DeallocateNode(ANode);
 end;
 
 
 procedure TX2BinaryTree.CursorNeeded;
 begin
   if not Assigned(FCursor) then
-    FCursor := GetCursorClass().Create(Root);
+    FCursor := GetCursorClass().Create(FRoot);
+end;
+
+procedure TX2BinaryTree.InvalidateCursor;
+begin
+  FreeAndNil(FCursor);
 end;
 
 
@@ -528,17 +592,12 @@ begin
 end;
 
 
-function TX2BinaryTree.GetRoot;
-begin
-  Result  := @FRoot;
-end;
-
 function TX2BinaryTree.GetCurrentKey;
 begin
   if Eof then
     raise EBTCursorEof.Create(RSBTCursorEof);
 
-  Result  := FCursor.CurrentNode^^.Key;
+  Result  := FCursor.CurrentNode^.Key;
 end;
 
 function TX2BinaryTree.GetEof;

@@ -102,8 +102,25 @@ begin
   //     16
   //  5      25
   // 1
-  //FTree.Delete(10);
-  //CheckTree('16-5-1-25');
+  FTree.Delete(10);
+  CheckTree('16-5-1-25');
+
+  //     16
+  //  1      25
+  FTree.Delete(5);
+  CheckTree('16-1-25');
+
+  //     16
+  //  1
+  FTree.Delete(25);
+  CheckTree('16-1');
+
+  //     1
+  FTree.Delete(16);
+  CheckTree('1');
+
+  FTree.Delete(1);
+  CheckTree('');
 
   CustomTearDown();
 end;
