@@ -204,7 +204,7 @@ end;
 
 function TX2AppVersionStrings.GetValue;
 begin
-  if (Index > 0) and (Index < FValues.Count) then
+  if (Index > -1) and (Index < FValues.Count) then
     Result  := FValues[Index]
   else
     Result  := '';
