@@ -138,9 +138,11 @@ type
     destructor Destroy(); override;
 
     //:$ Returns the formatted version information
-    //:: If Build is False, the return value will not include the
-    //:: application's Build number.
-    function FormatVersion(Build: Boolean = True): String;
+    //:: If ABuild is False, the return value will not include the
+    //:: application's Build number. If AProductName is True, the
+    //:: product name will be included as well.
+    function FormatVersion(const ABuild: Boolean = True;
+                           const AProductName: Boolean = False): String;
 
     //:$ Contains the path to the application's executable
     //:! This path in unaffected by the working directory which may be
@@ -294,11 +296,15 @@ var
 begin
   sBuild    := '';
 
-  if Build then
-    sBuild    := Format(' build %d', [FVersion.Build]);
+  if ABuild then
+    sBuild  := Format(' build %d', [FVersion.Build]);
+
+  Result    := '';
+  if AProductName then
+    Result  := FVersion.Strings.ProductName + ' ';
 
   with FVersion do
-    Result := Format('v%d.%d.%d%s', [Major, Minor, Release, sBuild]);
+    Result := Result + Format('v%d.%d.%d%s', [Major, Minor, Release, sBuild]);
 end;
 
 
