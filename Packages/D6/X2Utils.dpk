@@ -1,0 +1,50 @@
+package X2Utils;
+
+{$R *.res}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO ON}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST ON}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DESCRIPTION 'X²Utils'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  vcl,
+  ThemeManager6,
+  VirtualTreesD6;
+
+contains
+  X2UtVirtualTree in '..\..\X2UtVirtualTree.pas',
+  X2UtApp in '..\..\X2UtApp.pas',
+  X2UtBinaryTree in '..\..\X2UtBinaryTree.pas',
+  X2UtHandCursor in '..\..\X2UtHandCursor.pas',
+  X2UtHashes in '..\..\X2UtHashes.pas',
+  X2UtMisc in '..\..\X2UtMisc.pas',
+  X2UtOS in '..\..\X2UtOS.pas',
+  X2UtSettings in '..\..\X2UtSettings.pas',
+  X2UtSettingsForm in '..\..\X2UtSettingsForm.pas',
+  X2UtSettingsINI in '..\..\X2UtSettingsINI.pas',
+  X2UtSettingsRegistry in '..\..\X2UtSettingsRegistry.pas',
+  X2UtSingleInstance in '..\..\X2UtSingleInstance.pas',
+  X2UtStrings in '..\..\X2UtStrings.pas';
+
+end.
