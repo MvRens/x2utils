@@ -87,6 +87,6 @@ end;
 
 
 initialization
-  RegisterTest(TBitsTest.Suite);
+  RegisterTest('Bits', TBitsTest.Suite);
 
 end.
