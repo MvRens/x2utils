@@ -65,6 +65,8 @@ type
     procedure WriteInteger(const AName: String; AValue: Integer); override;
     procedure WriteString(const AName, AValue: String); override;
 
+    function ValueExists(const AName: String): Boolean; override;
+
     procedure GetSectionNames(const ADest: TStrings); override;
     procedure GetValueNames(const ADest: TStrings); override;
 
@@ -174,6 +176,12 @@ end;
 {========================= TX2INISettings
   Enumeration
 ========================================}
+function TX2INISettings.ValueExists;
+begin
+  Result  := FData.ValueExists(FSection, AName);
+end;
+
+
 procedure TX2INISettings.GetSectionNames;
 var
   slSections:       TStringList;

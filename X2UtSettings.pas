@@ -60,6 +60,8 @@ type
     procedure WriteInteger(const AName: String; AValue: Integer); virtual; abstract;
     procedure WriteString(const AName, AValue: String); virtual; abstract;
 
+    function ValueExists(const AName: String): Boolean; virtual; abstract;
+
     procedure GetSectionNames(const ADest: TStrings); virtual; abstract;
     procedure GetValueNames(const ADest: TStrings); virtual; abstract;
 

@@ -71,6 +71,8 @@ type
     procedure WriteInteger(const AName: String; AValue: Integer); override;
     procedure WriteString(const AName, AValue: String); override;
 
+    function ValueExists(const AName: String): Boolean; override;
+
     procedure GetSectionNames(const ADest: TStrings); override;
     procedure GetValueNames(const ADest: TStrings); override;
 
@@ -169,50 +171,48 @@ end;
 ========================================}
 function TX2RegistrySettings.ReadBool;
 begin
-  if OpenRead() then
+  Result  := ADefault;
+
+  if (OpenRead()) and (FData.ValueExists(AName)) then
     try
       Result  := FData.ReadBool(AName)
     except
-      Result  := ADefault;
-    end
-  else
-    Result  := ADefault;
+      // Silently ignore exceptions so the
+      // default value gets returned
+    end;
 end;
 
 function TX2RegistrySettings.ReadFloat;
 begin
-  if OpenRead() then
+  Result  := ADefault;
+
+  if (OpenRead()) and (FData.ValueExists(AName)) then
     try
       Result  := FData.ReadFloat(AName)
     except
-      Result  := ADefault;
-    end
-  else
-    Result  := ADefault;
+    end;
 end;
 
 function TX2RegistrySettings.ReadInteger;
 begin
-  if OpenRead() then
+  Result  := ADefault;
+
+  if (OpenRead()) and (FData.ValueExists(AName)) then
     try
       Result  := FData.ReadInteger(AName)
     except
-      Result  := ADefault;
-    end
-  else
-    Result  := ADefault;
+    end;
 end;
 
 function TX2RegistrySettings.ReadString;
 begin
-  if OpenRead() then
+  Result  := ADefault;
+
+  if (OpenRead()) and (FData.ValueExists(AName)) then
     try
       Result  := FData.ReadString(AName)
     except
-      Result  := ADefault;
-    end
-  else
-    Result  := ADefault;
+    end;
 end;
 
 
@@ -253,6 +253,7 @@ begin
     FData.GetKeyNames(ADest);
 end;
 
+
 procedure TX2RegistrySettings.GetValueNames;
 begin
   if OpenRead() then
@@ -278,6 +279,12 @@ begin
   if OpenRead() then
     if FData.ValueExists(AName) then
       FData.DeleteValue(AName);
+end;
+
+function TX2RegistrySettings.ValueExists;
+begin
+  if OpenRead() then
+    Result  := FData.ValueExists(AName);
 end;
 
 end.
