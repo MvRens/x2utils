@@ -14,6 +14,7 @@ type
   EBTKeyExists        = class(Exception);
   EBTKeyNotFound      = class(Exception);
   EBTCursorEof        = class(Exception);
+  EBTNoCursor         = class(Exception);
 
   {** Internal representation of a binary tree node.
    *
@@ -45,19 +46,15 @@ type
    * Trees implement a descendant to traverse through the tree.
   *}
   TX2BTCustomCursor   = class(TObject)
-  private
-    FRoot:        PX2BTNode;
   protected
-    function GetCurrentNode(): PX2BTNode; virtual; abstract;
+    function GetCurrentKey(): Cardinal; virtual; abstract;
     function GetEof(): Boolean; virtual; abstract;
   public
-    constructor Create(const ARoot: PX2BTNode); virtual;
-
     procedure First(); virtual; abstract;
     procedure Next(); virtual; abstract;
 
-    property CurrentNode:     PX2BTNode read GetCurrentNode;
     property Eof:             Boolean   read GetEof;
+    property CurrentKey:      Cardinal  read GetCurrentKey;
   end;
 
   TX2BTCursorClass    = class of TX2BTCustomCursor;
@@ -70,39 +67,69 @@ type
   *}
   TX2BTDefaultCursor  = class(TX2BTCustomCursor)
   private
+    FRoot:        PX2BTNode;
     FNode:        PX2BTNode;
   protected
-    function GetCurrentNode(): PX2BTNode; override;
+    function GetCurrentNode(): PX2BTNode;
+    function GetCurrentKey(): Cardinal; override;
     function GetEof(): Boolean; override;
   public
+    constructor Create(const ARoot: PX2BTNode); virtual;
+
     procedure First(); override;
     procedure Next(); override;
+
+    property CurrentNode:     PX2BTNode read GetCurrentNode;
   end;
 
 
-  {** Binary Tree implementation.
+  {** Abstract tree manager.
    *
-   * Implements the basic binary tree operations, allowing room for descendants
-   * to implement data storage and node management.
+   * Trees implement a descendant to manage the tree nodes. This is where the
+   * actual tree is stored, and possibly optimized. All tree managers are
+   * assumed to store a 32-bit unsigned integer key with optional data.
   *}
-  TX2BinaryTree       = class(TObject)
+  TX2BTCustomManager  = class(TObject)
   private
     FCursor:      TX2BTCustomCursor;
+  protected
+    function GetCurrentKey(): Cardinal; virtual;
+    function GetEof(): Boolean; virtual;
+
+    procedure CursorNeeded(); virtual; abstract;
+    procedure InvalidateCursor(); virtual; abstract;
+
+    property Cursor:      TX2BTCustomCursor read FCursor  write FCursor;
+  public
+    constructor Create(); virtual;
+    destructor Destroy(); override;
+
+    procedure Clear(); virtual; abstract;
+    procedure Insert(const AKey: Cardinal); virtual; abstract;
+    procedure Delete(const AKey: Cardinal); virtual; abstract;
+
+    function Exists(const AKey: Cardinal): Boolean; virtual; abstract;
+    function GetData(const AKey: Cardinal): Pointer; virtual; abstract;
+
+    procedure First(); virtual;
+    procedure Next(); virtual;
+
+    property CurrentKey:      Cardinal  read GetCurrentKey;
+    property Eof:             Boolean   read GetEof;
+  end;
+
+  TX2BTManagerClass   = class of TX2BTCustomManager;
+
+
+  {** Default tree manager.
+  *}
+  TX2BTDefaultManager = class(TX2BTCustomManager)
+  private
     FRoot:        PX2BTNode;
     FLastNode:    PX2BTNode;
-
-    function GetCurrentKey(): Cardinal;
-    function GetEof(): Boolean;
   protected
-    procedure CursorNeeded();
-    procedure InvalidateCursor();
-
-    //property Root:    PX2BTNode read FRoot  write FRoot;
-  protected
-    // Methods which don't really need to be virtual
-    // (if you have a good reason; share it with me so I can make it
-    // virtual, until then it's kept normal for performance reasons)
-    procedure ClearNodes();
+    procedure CursorNeeded(); override;
+    procedure InvalidateCursor(); override;
 
     function FindLowestNode(const ANode: PX2BTNode): PX2BTNode;
     function FindHighestNode(const ANode: PX2BTNode): PX2BTNode;
@@ -113,17 +140,31 @@ type
     function RightChild(const ANode: PX2BTNode): Boolean;
 
     procedure SwapNodes(const ANode1, ANode2: PX2BTNode);
-
-    // Virtual methods (commonly needed in descendants)
-    function GetCursorClass(): TX2BTCursorClass; virtual;
+    procedure DeleteCleanNode(var ANode: PX2BTNode); virtual;
 
     procedure AllocateNode(var ANode: PX2BTNode); virtual;
     procedure DeallocateNode(var ANode: PX2BTNode); virtual;
+  public
+    procedure Clear(); override;
+    procedure Insert(const AKey: Cardinal); override;
+    procedure Delete(const AKey: Cardinal); override;
 
-    procedure InsertNode(const AKey: Cardinal); virtual;
-    procedure DeleteNode(const AKey: Cardinal); virtual;
+    function Exists(const AKey: Cardinal): Boolean; override;
+    function GetData(const AKey: Cardinal): Pointer; override;
+  end;
 
-    procedure DeleteCleanNode(var ANode: PX2BTNode); virtual;
+  {** Binary Tree implementation.
+   *
+   * Exposes the tree manager and handles node data.
+  *}
+  TX2BinaryTree       = class(TObject)
+  private
+    FManager:       TX2BTCustomManager;
+
+    function GetCurrentKey(): Cardinal;
+    function GetEof(): Boolean;
+  protected
+    function GetManagerClass(): TX2BTManagerClass; virtual;
   public
     constructor Create(); virtual;
     destructor Destroy(); override;
@@ -188,13 +229,14 @@ resourcestring
   RSBTKeyExists   = 'The key "%d" already exists in the tree.';
   RSBTKeyNotFound = 'The key "%d" could not be found in the tree.';
   RSBTCursorEof   = 'Cursor is at Eof.';
+  RSBTNoCursor    = 'Cursor not initialized, call First before Next.';
 
 
 
-{====================== TX2BTCustomCursor
-  Initialization
+{===================== TX2BTDefaultCursor
+  Traversal
 ========================================}
-constructor TX2BTCustomCursor.Create;
+constructor TX2BTDefaultCursor.Create;
 begin
   inherited Create();
 
@@ -202,9 +244,6 @@ begin
 end;
 
 
-{===================== TX2BTDefaultCursor
-  Traversal
-========================================}
 procedure TX2BTDefaultCursor.First;
 begin
   FNode := FRoot;
@@ -254,83 +293,79 @@ begin
   Result  := FNode;
 end;
 
+function TX2BTDefaultCursor.GetCurrentKey;
+begin
+  Result  := CurrentNode^.Key;
+end;
+
 function TX2BTDefaultCursor.GetEof;
 begin
   Result  := not Assigned(FNode);
 end;
 
 
-{========================== TX2BinaryTree
+{===================== TX2BTCustomManager
   Initialization
 ========================================}
-constructor TX2BinaryTree.Create;
+constructor TX2BTCustomManager.Create;
 begin
   inherited;
 end;
 
-destructor TX2BinaryTree.Destroy;
+destructor TX2BTCustomManager.Destroy;
 begin
-  ClearNodes();
+  Clear();
   FreeAndNil(FCursor);
 
   inherited;
 end;
 
 
-{========================== TX2BinaryTree
-  Interface
-========================================}
-procedure TX2BinaryTree.Clear;
-begin
-  ClearNodes();
-end;
-
-function TX2BinaryTree.Exists;
-begin
-  Result  := Assigned(FindNodeOnly(AKey));
-end;
-
-procedure TX2BinaryTree.Insert;
-begin
-  InsertNode(AKey);
-end;
-
-procedure TX2BinaryTree.Delete;
-begin
-  DeleteNode(AKey);
-end;
-
-
-procedure TX2BinaryTree.First;
+procedure TX2BTCustomManager.First;
 begin
   CursorNeeded();
   FCursor.First();
 end;
 
-procedure TX2BinaryTree.Next;
+procedure TX2BTCustomManager.Next;
 begin
   CursorNeeded();
   FCursor.Next();
 end;
 
 
-{========================== TX2BinaryTree
-  Internal node operations
+function TX2BTCustomManager.GetCurrentKey;
+begin
+  if FCursor.Eof then
+    raise EBTCursorEof.Create(RSBTCursorEof);
+
+  Result  := FCursor.CurrentKey;
+end;
+
+function TX2BTCustomManager.GetEof;
+begin
+  Result  := Assigned(FCursor) and (FCursor.Eof);
+end;
+
+
+
+{==================== TX2BTDefaultManager
+  Node Management
 ========================================}
-procedure TX2BinaryTree.AllocateNode;
+procedure TX2BTDefaultManager.AllocateNode;
 begin
   GetMem(ANode, SizeOf(TX2BTNode));
   FillChar(ANode^, SizeOf(TX2BTNode), #0);
 end;
 
-procedure TX2BinaryTree.DeallocateNode;
+procedure TX2BTDefaultManager.DeallocateNode;
 begin
   FreeMem(ANode, SizeOf(TX2BTNode));
   ANode := nil;
 end;
 
 
-procedure TX2BinaryTree.ClearNodes;
+procedure TX2BTDefaultManager.Clear;
 var
   pNode:      PX2BTNode;
   pParent:    PX2BTNode;
@@ -369,7 +404,7 @@ begin
 end;
 
 
-function TX2BinaryTree.FindHighestNode;
+function TX2BTDefaultManager.FindHighestNode;
 begin
   Result  := ANode;
 
@@ -377,7 +412,7 @@ begin
     Result  := Result^.Right;
 end;
 
-function TX2BinaryTree.FindLowestNode;
+function TX2BTDefaultManager.FindLowestNode;
 begin
   Result  := ANode;
 
@@ -385,7 +420,7 @@ begin
     Result  := Result^.Left;
 end;
 
-function TX2BinaryTree.FindNode;
+function TX2BTDefaultManager.FindNode;
 var
   pNode:        PX2BTNode;
 
@@ -421,7 +456,7 @@ begin
     FLastNode := Result;
 end;
 
-function TX2BinaryTree.FindNodeOnly;
+function TX2BTDefaultManager.FindNodeOnly;
 var
   pDummy:       PX2BTNode;
 
@@ -430,19 +465,19 @@ begin
 end;
 
 
-function TX2BinaryTree.LeftChild;
+function TX2BTDefaultManager.LeftChild;
 begin
   Assert(Assigned(ANode^.Parent), 'Node has no parent!');
   Result  := (ANode^.Parent^.Left = ANode);
 end;
 
-function TX2BinaryTree.RightChild;
+function TX2BTDefaultManager.RightChild;
 begin
   Result  := not LeftChild(ANode);
 end;
 
 
-procedure TX2BinaryTree.SwapNodes;
+procedure TX2BTDefaultManager.SwapNodes;
   procedure FixLinks(const ANode, AOld: PX2BTNode);
   begin
     if Assigned(ANode^.Parent) then
@@ -476,7 +511,7 @@ begin
 end;
 
 
-procedure TX2BinaryTree.InsertNode;
+procedure TX2BTDefaultManager.Insert;
 var
   pNode:      PX2BTNode;
   pParent:    PX2BTNode;
@@ -505,7 +540,7 @@ begin
   end;
 end;
 
-procedure TX2BinaryTree.DeleteNode;
+procedure TX2BTDefaultManager.Delete;
 var
   pNode:      PX2BTNode;
   pLowest:    PX2BTNode;
@@ -538,7 +573,7 @@ begin
   DeleteCleanNode(pNode);
 end;
 
-procedure TX2BinaryTree.DeleteCleanNode;
+procedure TX2BTDefaultManager.DeleteCleanNode;
 var
   pParent:        PX2BTNode;
   pChild:         PX2BTNode;
@@ -574,35 +609,97 @@ begin
 end;
 
 
-procedure TX2BinaryTree.CursorNeeded;
+function TX2BTDefaultManager.Exists;
 begin
-  if not Assigned(FCursor) then
-    FCursor := GetCursorClass().Create(FRoot);
+  Result  := Assigned(FindNodeOnly(AKey));
 end;
 
-procedure TX2BinaryTree.InvalidateCursor;
+function TX2BTDefaultManager.GetData;
+begin
+  //! Implement GetData
+end;
+
+
+
+procedure TX2BTDefaultManager.CursorNeeded;
+begin
+  if not Assigned(FCursor) then
+    FCursor := TX2BTDefaultCursor.Create(FRoot);
+end;
+
+procedure TX2BTDefaultManager.InvalidateCursor;
 begin
   FreeAndNil(FCursor);
 end;
 
 
-function TX2BinaryTree.GetCursorClass;
+{========================== TX2BinaryTree
+  Initialization
+========================================}
+constructor TX2BinaryTree.Create;
 begin
-  Result  := TX2BTDefaultCursor;
+  inherited;
+
+  FManager  := GetManagerClass().Create();
+end;
+
+destructor TX2BinaryTree.Destroy;
+begin
+  FreeAndNil(FManager);
+
+  inherited;
+end;
+
+
+{========================== TX2BinaryTree
+  Interface
+========================================}
+procedure TX2BinaryTree.Clear;
+begin
+  FManager.Clear();
+end;
+
+function TX2BinaryTree.Exists;
+begin
+  Result  := FManager.Exists(AKey);
+end;
+
+procedure TX2BinaryTree.Insert;
+begin
+  FManager.Insert(AKey);
+end;
+
+procedure TX2BinaryTree.Delete;
+begin
+  FManager.Delete(AKey);
+end;
+
+
+procedure TX2BinaryTree.First;
+begin
+  FManager.First();
+end;
+
+procedure TX2BinaryTree.Next;
+begin
+  FManager.Next();
+end;
+
+
+function TX2BinaryTree.GetManagerClass;
+begin
+  Result  := TX2BTDefaultManager;
 end;
 
 
 function TX2BinaryTree.GetCurrentKey;
 begin
-  if Eof then
-    raise EBTCursorEof.Create(RSBTCursorEof);
-
-  Result  := FCursor.CurrentNode^.Key;
+  Result  := FManager.CurrentKey;
 end;
 
 function TX2BinaryTree.GetEof;
 begin
-  Result  := Assigned(FCursor) and (FCursor.Eof);
+  Result  := FManager.Eof;
 end;
 
 end.
