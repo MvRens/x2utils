@@ -8,6 +8,11 @@
 }
 unit X2UtBits;
 
+{$I X2UtCompilerVersion.inc}
+{$IFDEF D7}
+  {$WARN UNSAFE_CODE OFF}
+{$ENDIF}
+
 interface
 type
   TBit          = (bit0,  bit1,  bit2,  bit3,  bit4,  bit5,  bit6,  bit7,
@@ -59,6 +64,8 @@ var
   iPos:       Integer;
 
 begin
+  Result  := '';
+
   case ASize of
     bs8:
       begin
@@ -85,6 +92,8 @@ begin
         bMax    := bit63;
         iLength := 64;
       end;
+  else
+    exit;
   end;
 
   SetLength(Result, iLength);
