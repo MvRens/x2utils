@@ -3,8 +3,6 @@ program X2UtilsSettingsTest;
 {$APPTYPE CONSOLE}
 
 uses
-  madExcept,
-  madLinkDisAsm,
   Classes,
   SysUtils,
   Windows,
@@ -96,6 +94,12 @@ begin
       finally
         Free();
       end;
+    }
+
+    // Test for the definitions
+    {
+    Settings.Define('Test', 'Value', 5, [[0, 5], [10, 15]]);
+    Settings.ReadInteger('Test', 'Value');
     }
 
     TraverseSection(Settings, '', 1);

@@ -66,8 +66,8 @@ begin
 
     shData.Reset();
     while shData.Next() do
-      Write(shData.CurrentKey, ': ', shData.CurrentValue, ' (',
-            shData[shData.CurrentKey], ')');
+      WriteLn(shData.CurrentKey, ': ', shData.CurrentValue, ' (',
+              shData[shData.CurrentKey], ')');
   finally
     FreeAndNil(shData);
     ReadLn;

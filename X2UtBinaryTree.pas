@@ -192,12 +192,14 @@ type
     property CurrentValue:      String          read GetCurrentValue;
   end;
 
+resourcestring
+  RSInvalidCursor   = 'Cursor is invalid!';
+  RSInvalidDataSize = 'Invalid data size!';
+
 implementation
 resourcestring
   RSOrphanNode      = 'BUG: Node does not seem to belong to it''s parent!';
-  RSInvalidCursor   = 'Cursor is invalid!';
   RSTooManyPops     = 'More Pops than Pushes!';
-  RSInvalidDataSize = 'Invalid data size!';
 
 const
   CStackSize      = 32;
