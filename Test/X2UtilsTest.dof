@@ -47,7 +47,7 @@ PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=
 Packages=vcl;rtl;vclx;Indy60;madBasic_;madDisAsm_;dsnap;dbrtl;xmlrtl;inet;soaprtl
-Conditionals=madExcept
+Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
@@ -56,6 +56,10 @@ HostApplication=
 Launcher=
 UseLauncher=0
 DebugCWD=
+[Language]
+ActiveLang=
+ProjectLang=
+RootDir=
 [Version Info]
 IncludeVerInfo=1
 AutoIncBuild=1
@@ -148,19 +152,3 @@ Item0=madExcept
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
-[Included Packages]
-C:\Program Files\Borland\Delphi6\Bin\dclstd60.bpl=Borland Standard Components
-c:\program files\borland\delphi6\Bin\dclsmpedit60.bpl=Borland Editor Script Enhancements
-F:\Delphi\Components\madCollection\madBasic\Delphi 6\madBasic_.bpl=madBasic 1.1f  ·  www.madshi.net
-F:\Delphi\Components\madCollection\madDisAsm\Delphi 6\madDisAsm_.bpl=madDisAsm 2.0a  ·  www.madshi.net
-F:\Delphi\Components\madCollection\madExcept\Delphi 6\madExcept_.bpl=madExcept 2.6a  ·  www.madshi.net
-F:\Delphi\Components\madCollection\madExcept\Delphi 6\madExceptIde_.bpl=madExceptIde 1.0b  ·  www.madshi.net
-F:\Delphi\Components\madCollection\madExcept\Delphi 6\madExceptWizard_.bpl=madExceptWizard 2.6  ·  www.madshi.net
-C:\Program Files\Borland\Delphi6\Bin\dcldb60.bpl=Borland Database Components
-c:\program files\borland\delphi6\Bin\dclnet60.bpl=Borland Internet Components
-c:\program files\borland\delphi6\Bin\dclsoap60.bpl=Borland SOAP Components
-c:\program files\borland\delphi6\Projects\Bpl\ColorPickerButtonD6.bpl=ColorPickerButton
-C:\Program Files\Borland\Delphi6\Bin\dclact60.bpl=Borland ActionBar Components
-c:\program files\borland\delphi6\Projects\Bpl\SysILS.bpl=(untitled)
-c:\program files\borland\delphi6\Projects\Bpl\videocap5.bpl=(untitled)
-c:\program files\borland\delphi6\Projects\Bpl\DragDropD6.bpl=Drag and Drop Component Suite

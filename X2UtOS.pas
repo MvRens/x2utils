@@ -18,6 +18,13 @@ type
   TX2OSVersion  = (osWin95, osWin98, osWinME, osWinNT3, osWinNT4,
                    osWin2K, osWinXP, osWin2003, osUnknown);
 
+  //:$ Record to hold the Common Controls version
+  TX2CCVersion  = record
+    Major:            Cardinal;
+    Minor:            Cardinal;
+    Build:            Cardinal;
+  end;
+
   {
     :$ Contains extended version information for the Operating System
   }
@@ -46,10 +53,14 @@ type
   }
   TX2OS           = class(TObject)
   private
+    FCCVersion:       TX2CCVersion;
     FVersion:         TX2OSVersion;
     FVersionEx:       TX2OSVersionEx;
+
+    function GetXPManifest(): Boolean;
   protected
     procedure GetVersion(); virtual;
+    procedure GetCCVersion(); virtual;
   public
     constructor Create();
     destructor Destroy(); override;
@@ -58,6 +69,13 @@ type
     //:: If Build is False, the return value will not include the
     //:: OS' Build number.
     function FormatVersion(Build: Boolean = True): String;
+
+    //:$ Contains the Common Controls version
+    property ComCtlVersion: TX2CCVersion    read FCCVersion;
+
+    //:$ Checks if the application uses an XP manifest
+    //:: If present, Common Controls version 6 or higher is available.
+    property XPManifest:    Boolean         read GetXPManifest;
 
     //:$ Contains the detected OS version
     property Version:       TX2OSVersion    read FVersion;
@@ -71,7 +89,22 @@ type
 implementation
 uses
   SysUtils;
-  
+
+const
+  ComCtl32  = 'comctl32.dll';
+
+type
+  PDllVersionInfo = ^TDllVersionInfo;
+  TDllVersionInfo = record
+    cbSize:             DWORD;
+    dwMajorVersion:     DWORD;
+    dwMinorVersion:     DWORD;
+    dwBuildNumber:      DWORD;
+    dwPlatformID:       DWORD;
+  end;
+
+  TDllGetVersion  = function(pdvi: PDllVersionInfo): HRESULT; stdcall;
+
 var
   GOS:        TX2OS;
 
@@ -97,6 +130,7 @@ begin
 
   FVersionEx  := TX2OSVersionEx.Create();
   GetVersion();
+  GetCCVersion();
 end;
 
 destructor TX2OS.Destroy;
@@ -180,6 +214,43 @@ begin
   end;
 end;
 
+procedure TX2OS.GetCCVersion;
+var
+  DllGetVersion:    TDllGetVersion;
+  hLib:             THandle;
+  viVersion:        TDllVersionInfo;
+
+begin
+  FillChar(FCCVersion, SizeOf(FCCVersion), #0);
+  hLib  := LoadLibrary(ComCtl32);
+
+  if hLib <> 0 then
+  begin
+    @DllGetVersion  := GetProcAddress(hLib, 'DllGetVersion');
+    if Assigned(DllGetVersion) then
+    begin
+      FillChar(viVersion, SizeOf(viVersion), #0);
+      viVersion.cbSize  := SizeOf(viVersion);
+      
+      DllGetVersion(@viVersion);
+
+      with FCCVersion do
+      begin
+        Major   := viVersion.dwMajorVersion;
+        Minor   := viVersion.dwMinorVersion;
+        Build   := viVersion.dwBuildNumber;
+      end;
+    end;
+
+    FreeLibrary(hLib);
+  end;
+end;
+
+function TX2OS.GetXPManifest;
+begin
+  Result  := (FCCVersion.Major >= 6);
+end;
+
 
 function TX2OS.FormatVersion;
 var
@@ -199,5 +270,5 @@ end;
 initialization
 finalization
   FreeAndNil(GOS);
-  
+
 end.

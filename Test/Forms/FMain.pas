@@ -12,10 +12,13 @@ uses
 type
   TfrmMain = class(TForm, IX2InstanceNotifier)
     chkBytes:                   TCheckBox;
+    chkXPManifest:              TCheckBox;
     lblAppPath:                 TLabel;
     lblAppPathValue:            TLabel;
     lblAppVersion:              TLabel;
     lblAppVersionValue:         TLabel;
+    lblComCtlVersion:           TLabel;
+    lblComCtlVersionValue:      TLabel;
     lblFormatSize:              TLabel;
     lblFormatSizeValue:         TLabel;
     lblInstances:               TLabel;
@@ -40,17 +43,27 @@ uses
 
 {$R *.dfm}
 
+// If you have a WinXP.RES which holds the XP manifest, you will
+// notice that the Common Controls version changes to 6 instead of 5.
+{.$R WinXP.RES}
+
 {=============================== TfrmMain
   Initialization
 ========================================}
 procedure TfrmMain.FormCreate;
 begin
   Randomize();
-  
-  lblAppPathValue.Caption     := App.Path;
-  lblAppVersionValue.Caption  := App.FormatVersion();
-  lblOSVersionValue.Caption   := OS.FormatVersion();
-  txtSize.Text                := IntToStr(Random(MaxInt));
+
+  lblAppPathValue.Caption       := App.Path;
+  lblAppVersionValue.Caption    := App.FormatVersion();
+  lblOSVersionValue.Caption     := OS.FormatVersion();
+
+  with OS.ComCtlVersion do
+    lblComCtlVersionValue.Caption := Format('%d.%d build %d', [Major, Minor,
+                                                               Build]);
+
+  chkXPManifest.Checked         := OS.XPManifest;
+  txtSize.Text                  := IntToStr(Random(MaxInt));
 
   RegisterInstance(Self);
 end;

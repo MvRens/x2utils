@@ -1,8 +1,6 @@
 program X2UtilsTest;
 
 uses
-  madExcept,
-  madLinkDisAsm,
   Forms,
   X2UtOS in '..\X2UtOS.pas',
   X2UtApp in '..\X2UtApp.pas',
