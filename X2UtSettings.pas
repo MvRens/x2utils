@@ -140,6 +140,11 @@ type
 
     //:$ Deletes the specified value.
     procedure DeleteValue(const AName: String); virtual; abstract;
+
+
+    //:$ Validates the specified value using the defined callback method
+    //:$ if present.
+    function ValidateValue(const AName: String; const AValue: Variant): Variant;
   end;
 
   {
@@ -422,6 +427,18 @@ begin
     pDefine.Action(saWrite, FSection, AName, vValue);
 
   InternalWriteString(AName, vValue);
+end;
+
+
+function TX2Settings.ValidateValue;
+var
+  pDefine:      TX2SettingsDefine;
+
+begin
+  Result  := AValue;
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+    pDefine.Action(saRead, FSection, AName, Result);
 end;
 
 
