@@ -8,7 +8,8 @@ uses
   X2UtApp in '..\X2UtApp.pas',
   X2UtHandCursor in '..\X2UtHandCursor.pas',
   X2UtSingleInstance in '..\X2UtSingleInstance.pas',
-  FMain in 'Forms\FMain.pas' {frmMain};
+  FMain in 'Forms\FMain.pas' {frmMain},
+  X2UtStrings in '..\X2UtStrings.pas';
 
 {$R *.res}
 
@@ -23,6 +24,7 @@ begin
     exit;
 
   Application.Initialize;
+  Application.Title := 'X²Utils Test';
   Application.CreateForm(TfrmMain, frmMain);
   Application.Run;
 end.

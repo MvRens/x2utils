@@ -79,7 +79,7 @@ LegalCopyright=
 LegalTrademarks=
 OriginalFilename=
 ProductName=
-ProductVersion=
+ProductVersion=1.0.0.0
 Comments=
 [Excluded Packages]
 c:\program files\borland\delphi6\Projects\Bpl\VirtualTreesD6D.bpl=Virtual Treeview
@@ -142,6 +142,12 @@ c:\program files\borland\delphi6\Bin\dclwebsnap60.bpl=Borland WebSnap Components
 c:\program files\borland\delphi6\Bin\dclite60.bpl=Borland Integrated Translation Environment
 c:\program files\borland\delphi6\Bin\dcldbx60.bpl=Borland dbExpress Components
 c:\program files\borland\delphi6\Bin\dcldbxcds60.bpl=Borland Local DBX ClientDataset Components
+[HistoryLists\hlConditionals]
+Count=1
+Item0=madExcept
+[HistoryLists\hlUnitAliases]
+Count=1
+Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [Included Packages]
 C:\Program Files\Borland\Delphi6\Bin\dclstd60.bpl=Borland Standard Components
 c:\program files\borland\delphi6\Bin\dclsmpedit60.bpl=Borland Editor Script Enhancements
