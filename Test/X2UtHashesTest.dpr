@@ -61,7 +61,7 @@ begin
 
   shData  := TX2UtStringHash.Create();
   try
-    shData['this']  := 'is';
+    shData['thisakslhalskdjfhaslkdfjhaslkfjh']  := 'is';
     shData['a']     := 'test';
 
     shData.Reset();

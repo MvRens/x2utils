@@ -311,7 +311,8 @@ begin
     if ACanCreate then
     begin
       InitNode(FRoot);
-      Result      := FRoot;
+      FRoot^.Index  := AIndex;
+      Result        := FRoot;
 
       if ASetCursor then
       begin
