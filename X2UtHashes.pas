@@ -25,7 +25,7 @@ type
     Prev:           PX2UtHashItem;
     Next:           PX2UtHashItem;
     Key:            String;
-    Value:          record end;
+    Data:           record end;
   end;
 
   {
@@ -91,7 +91,6 @@ type
   {
     :$ Hash implementation for pointer values
   }
-  (*
   TX2UtHash       = class(TX2UtCustomHash)
   private
     function GetItem(Key: String): Pointer;
@@ -109,7 +108,25 @@ type
     //:$ Returns the value at the current cursor location.
     property CurrentValue:      Pointer         read GetCurrentValue;
   end;
-  *)
+
+  {
+    :$ Hash implementation for integer values
+  }
+  TX2UtIntegerHash  = class(TX2UtHash)
+  private
+    function GetItem(Key: String): Integer;
+    procedure SetItem(Key: String; const Value: Integer);
+
+    function GetCurrentValue(): Integer;
+  public
+    //:$ Gets or sets an item.
+    property Items[Key: String]:        Integer read GetItem
+                                                write SetItem; default;
+
+    //:$ Returns the value at the current cursor location.
+    property CurrentValue:      Integer         read GetCurrentValue;
+  end;
+
 
   {
     :$ Hash implementation for string values
@@ -431,41 +448,62 @@ end;
 {============================== TX2UtHash
   Item Management
 ========================================}
-(*
 constructor TX2UtHash.Create;
 begin
   inherited;
 
-  DataSize  := SizeOf(Pointer);
+  HashDataSize  := SizeOf(Pointer);
 end;
 
 function TX2UtHash.GetItem;
 var
   pNode:        PX2UtBTreeNode;
+  pItem:        PX2UtHashItem;
 
 begin
-  pNode := LookupNode(Key);
-  if Assigned(pNode) then
-    Result  := PPointer(GetNodeData(pNode))^;
+  Assert(Length(Key) > 0, RSEmptyKey);
+  pItem := LookupItem(Key, pNode);
+  if Assigned(pItem) then
+    Result  := PPointer(GetItemData(pItem))^;
 end;
 
 procedure TX2UtHash.SetItem;
 var
   pNode:        PX2UtBTreeNode;
+  pItem:        PX2UtHashItem;
 
 begin
-  pNode := LookupNode(Key, True);
-  if Assigned(pNode) then
-    PPointer(GetNodeData(pNode))^ := Value;
+  Assert(Length(Key) > 0, RSEmptyKey);
+  pItem := LookupItem(Key, pNode, True);
+  if Assigned(pItem) then
+    PPointer(GetItemData(pItem))^ := Value;
 end;
 
 function TX2UtHash.GetCurrentValue;
 begin
   Result  := nil;
-  if ValidCursor(True) then
-    Result  := PPointer(GetNodeData(Cursor))^;
+  if ValidCursor() then
+    Result  := PPointer(GetItemData(HashCursor))^;
 end;
-*)
+
+
+{======================= TX2UtIntegerHash
+  Item Management
+========================================}
+function TX2UtIntegerHash.GetItem;
+begin
+  Result  := Integer(inherited GetItem(Key));
+end;
+
+procedure TX2UtIntegerHash.SetItem;
+begin
+  inherited SetItem(Key, Pointer(Value));
+end;
+
+function TX2UtIntegerHash.GetCurrentValue;
+begin
+  Result  := Integer(inherited GetCurrentValue());
+end;
 
 
 {======================== TX2UtStringHash
@@ -484,6 +522,7 @@ var
   pItem:        PX2UtHashItem;
 
 begin
+  Assert(Length(Key) > 0, RSEmptyKey);
   pItem := LookupItem(Key, pNode);
   if Assigned(pItem) then
     Result  := PString(GetItemData(pItem))^;
@@ -527,6 +566,7 @@ end;
 
 function TX2UtStringHash.GetCurrentValue;
 begin
+  Result  := '';
   if ValidCursor() then
     Result  := PString(GetItemData(HashCursor))^;
 end;

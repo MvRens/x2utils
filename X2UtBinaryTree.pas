@@ -200,6 +200,7 @@ type
   protected
     function GetItem(Index: Cardinal): Integer;
     procedure SetItem(Index: Cardinal; const Value: Integer);
+
     function GetCurrentValue(): Integer;
   public
     //:$ Gets or sets an item.
@@ -571,6 +572,8 @@ end;
 
 function TX2UtCustomBTree.DeleteLeftShrunk;
 begin
+  Result  := CError;
+  
   case ANode^.Balance of
     -1:
       begin
@@ -634,6 +637,8 @@ end;
 
 function TX2UtCustomBTree.DeleteRightShrunk;
 begin
+  Result  := CError;
+  
   case ANode^.Balance of
     1:
       begin
