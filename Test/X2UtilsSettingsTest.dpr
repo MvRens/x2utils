@@ -97,10 +97,8 @@ begin
     }
 
     // Test for the definitions
-    {
     Settings.Define('Test', 'Value', 5, [[0, 5], [10, 15]]);
     Settings.ReadInteger('Test', 'Value');
-    }
 
     TraverseSection(Settings, '', 1);
     WriteLn;

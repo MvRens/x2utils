@@ -46,7 +46,7 @@ UnitOutputDir=
 PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=
-Packages=vcl;rtl;dbrtl;vcldb;vclx;dss;dsnapcrba;dsnapcon;inetdb;webdsnap;websnap;dbxcds;Irc;parsdpk;hotspotter
+Packages=vcl;rtl;dbrtl;vcldb;vclx;dss;dsnapcrba;dsnapcon;inetdb;webdsnap;websnap;dbxcds;Irc;parsdpk;hotspotter;dxorgcD6
 Conditionals=madExcept
 DebugSourceDirs=
 UsePackages=0
@@ -56,6 +56,10 @@ HostApplication=
 Launcher=
 UseLauncher=0
 DebugCWD=
+[Language]
+ActiveLang=
+ProjectLang=
+RootDir=
 [Version Info]
 IncludeVerInfo=0
 AutoIncBuild=0
@@ -184,16 +188,7 @@ c:\program files\borland\delphi6\Bin\dclwebsnap60.bpl=Borland WebSnap Components
 c:\program files\borland\delphi6\Bin\dclite60.bpl=Borland Integrated Translation Environment
 c:\program files\borland\delphi6\Bin\dcldbx60.bpl=Borland dbExpress Components
 c:\program files\borland\delphi6\Bin\dcldbxcds60.bpl=Borland Local DBX ClientDataset Components
-[Included Packages]
-C:\Program Files\Borland\Delphi6\Bin\dclstd60.bpl=Borland Standard Components
-c:\program files\borland\delphi6\Bin\dclsmpedit60.bpl=Borland Editor Script Enhancements
-C:\Program Files\Borland\Delphi6\Bin\dcldb60.bpl=Borland Database Components
-C:\Program Files\Borland\Delphi6\Bin\dclact60.bpl=Borland ActionBar Components
-F:\Delphi\Components\madCollection\madBasic\Delphi 6\madBasic_.bpl=madBasic 1.1f  ·  www.madshi.net
-F:\Delphi\Components\madCollection\madDisAsm\Delphi 6\madDisAsm_.bpl=madDisAsm 2.0a  ·  www.madshi.net
-F:\Delphi\Components\madCollection\madExcept\Delphi 6\madExcept_.bpl=madExcept 2.6a  ·  www.madshi.net
-F:\Delphi\Components\madCollection\madExcept\Delphi 6\madExceptWizard_.bpl=madExceptWizard 2.6  ·  www.madshi.net
-c:\program files\borland\delphi6\Bin\dclcds60.bpl=Borland Base Cached ClientDataset Component
-C:\Program Files\Borland\Delphi6\Bin\dclmid60.bpl=Borland MyBase DataAccess Components
-C:\PROGRA~1\Borland\Delphi6\Projects\Bpl\ThemeManager6.bpl=Windows XP Theme Manager
-H:\Downloads\commentexpert.bpl=Comment Expert v1.0 Alpha
+<<<<<<< .working
+=======
+F:\Delphi\Components\DevExpress\OrgChart Suite\Lib\dcldxDBOrD6.bpl=ExpressDBOrgChart by Developer Express Inc.
+>>>>>>> .merge-right.r40

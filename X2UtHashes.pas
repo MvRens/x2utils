@@ -177,8 +177,6 @@ var
   pValue:     PChar;
 
 begin
-  Result  := 0;
-
   iA      := $9e3779b9;
   iB      := iA;
   iC      := iA;
@@ -377,19 +375,10 @@ end;
 
 
 function TX2UtCustomHash.GetCurrentKey;
-var
-  pKey:       PString;
-
 begin
   Result  := '';
   if ValidCursor(True) then
-  begin
     Result  := HashCursor^.Key;
-    {
-    pKey    := GetNodeInternal(Cursor);
-    Result  := pKey^;
-    }
-  end;
 end;
 
 
@@ -537,9 +526,6 @@ end;
 
 
 function TX2UtStringHash.GetCurrentValue;
-var
-  pData:        PString;
-
 begin
   if ValidCursor() then
     Result  := PString(GetItemData(HashCursor))^;
