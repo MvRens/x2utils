@@ -5,6 +5,7 @@ program X2UtilsSettingsTest;
 uses
   Classes,
   SysUtils,
+  Variants,
   Windows,
   X2UtApp in '..\X2UtApp.pas',
   X2UtSettings in '..\X2UtSettings.pas',
@@ -70,7 +71,7 @@ var
 
 begin
   // INI settings
-  WriteLn('INI data:');
+  //WriteLn('INI data:');
   Settings  := TX2INISettingsFactory.Create();
   try
     with TX2INISettingsFactory(Settings) do
@@ -97,11 +98,20 @@ begin
     }
 
     // Test for the definitions
-    Settings.Define('Test', 'Value', 5, [[0, 5], [10, 15]]);
-    Settings.ReadInteger('Test', 'Value');
+    Settings.Define('Test', 'Value', 5, [0, 5, 10, 15]);
 
+    with Settings['Test'] do
+    try
+      WriteInteger('Value', 6);
+      WriteLn(ReadInteger('Value'));
+    finally
+      Free();
+    end;
+
+    {
     TraverseSection(Settings, '', 1);
     WriteLn;
+    }
   finally
     FreeAndNil(Settings);
   end;

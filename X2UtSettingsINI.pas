@@ -101,26 +101,34 @@ end;
 ========================================}
 function TX2INISettings.InternalReadBool;
 begin
-  AValue  := FData.ReadBool(FSection, AName, False);
-  Result  := True;
+  Result  := ValueExists(AName);
+
+  if Result then
+    AValue  := FData.ReadBool(FSection, AName, False);
 end;
 
 function TX2INISettings.InternalReadFloat;
 begin
-  AValue  := FData.ReadFloat(FSection, AName, 0);
-  Result  := True;
+  Result  := ValueExists(AName);
+
+  if Result then
+    AValue  := FData.ReadFloat(FSection, AName, 0);
 end;
 
 function TX2INISettings.InternalReadInteger;
 begin
-  AValue  := FData.ReadInteger(FSection, AName, 0);
-  Result  := True;
+  Result  := ValueExists(AName);
+
+  if Result then
+    AValue  := FData.ReadInteger(FSection, AName, 0);
 end;
 
 function TX2INISettings.InternalReadString;
 begin
-  AValue  := FData.ReadString(FSection, AName, '');
-  Result  := True;
+  Result  := ValueExists(AName);
+
+  if Result then
+    AValue  := FData.ReadString(FSection, AName, '');
 end;
 
 

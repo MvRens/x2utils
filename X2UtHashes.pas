@@ -20,10 +20,10 @@ type
   {
     :$ Internal representation of a hash item
   }
-  PX2UtHashItem   = ^TX2UtHashItem;
-  TX2UtHashItem   = record
-    Prev:           PX2UtHashItem;
-    Next:           PX2UtHashItem;
+  PX2HashItem   = ^TX2HashItem;
+  TX2HashItem   = record
+    Prev:           PX2HashItem;
+    Next:           PX2HashItem;
     Key:            String;
     Data:           record end;
   end;
@@ -31,20 +31,20 @@ type
   {
     :$ Internal hash list
   }
-  PX2UtHashList   = ^TX2UtHashList;
-  TX2UtHashList   = record
-    Root:           PX2UtHashItem;
+  PX2HashList   = ^TX2HashList;
+  TX2HashList   = record
+    Root:           PX2HashItem;
   end;
-  
+
   {
     :$ Hash implementation
 
     :: This class implements a hash without knowing anything about
     :: the data it contains.
   }
-  TX2UtCustomHash = class(TX2UtCustomBTree)
+  TX2CustomHash = class(TX2CustomBTree)
   private
-    FHashCursor:        PX2UtHashItem;
+    FHashCursor:        PX2HashItem;
     FHashDataSize:      Cardinal;
     FHashItemSize:      Cardinal;
 
@@ -53,21 +53,21 @@ type
   protected
     function Hash(const AValue: String): Cardinal; virtual;
 
-    function GetItemData(const AItem: PX2UtHashItem): Pointer; virtual;
+    function GetItemData(const AItem: PX2HashItem): Pointer; virtual;
     function LookupItem(const AKey: String;
-                        out ANode: PX2UtBTreeNode;
+                        out ANode: PX2BTreeNode;
                         const ACanCreate: Boolean = False;
-                        const ASetCursor: Boolean = False): PX2UtHashItem;
+                        const ASetCursor: Boolean = False): PX2HashItem;
 
-    procedure FreeNode(var ANode: PX2UtBTreeNode); override;
+    procedure FreeNode(var ANode: PX2BTreeNode); override;
 
     procedure ClearCursor(); override;
     function ValidCursor(const ARaiseError: Boolean = True): Boolean; override;
 
-    procedure InitHashItem(var AItem: PX2UtHashItem); virtual;
-    procedure FreeHashItem(var AItem: PX2UtHashItem); virtual;
+    procedure InitHashItem(var AItem: PX2HashItem); virtual;
+    procedure FreeHashItem(var AItem: PX2HashItem); virtual;
 
-    property HashCursor:        PX2UtHashItem   read FHashCursor    write FHashCursor;
+    property HashCursor:        PX2HashItem     read FHashCursor    write FHashCursor;
     property HashItemSize:      Cardinal        read FHashItemSize;
     property HashTotalSize:     Cardinal        read GetHashTotalSize;
     property HashDataSize:      Cardinal        read FHashDataSize  write FHashDataSize;
@@ -91,8 +91,8 @@ type
   {
     :$ Hash implementation for pointer values
   }
-  TX2UtHash       = class(TX2UtCustomHash)
-  private
+  TX2Hash       = class(TX2CustomHash)
+  protected
     function GetItem(Key: String): Pointer;
     procedure SetItem(Key: String; const Value: Pointer);
 
@@ -112,8 +112,8 @@ type
   {
     :$ Hash implementation for integer values
   }
-  TX2UtIntegerHash  = class(TX2UtHash)
-  private
+  TX2IntegerHash    = class(TX2Hash)
+  protected
     function GetItem(Key: String): Integer;
     procedure SetItem(Key: String; const Value: Integer);
 
@@ -131,15 +131,15 @@ type
   {
     :$ Hash implementation for string values
   }
-  TX2UtStringHash = class(TX2UtCustomHash)
-  private
+  TX2StringHash = class(TX2CustomHash)
+  protected
     function GetItem(Key: String): String;
     procedure SetItem(Key: String; const Value: String);
 
     function GetCurrentValue(): String;
   protected
-    procedure InitHashItem(var AItem: PX2UtHashItem); override;
-    procedure FreeHashItem(var AItem: PX2UtHashItem); override;
+    procedure InitHashItem(var AItem: PX2HashItem); override;
+    procedure FreeHashItem(var AItem: PX2HashItem); override;
   public
     constructor Create(); override;
     property CurrentKey;
@@ -152,24 +152,46 @@ type
     property CurrentValue:      String          read GetCurrentValue;
   end;
 
+  {
+    :$ Hash implementation for object values
+  }
+  TX2ObjectHash     = class(TX2Hash)
+  private
+    FOwnsObjects:       Boolean;
+  protected
+    function GetItem(Key: String): TObject;
+    procedure SetItem(Key: String; const Value: TObject);
+
+    function GetCurrentValue(): TObject;
+  protected
+    procedure FreeHashItem(var AItem: PX2HashItem); override;
+  public
+    //:$ Gets or sets an item.
+    property Items[Key: String]:        TObject read GetItem
+                                                write SetItem; default;
+
+    //:$ Returns the value at the current cursor location.
+    property CurrentValue:      TObject         read GetCurrentValue;
+  end;
+
 implementation
 resourcestring
   RSEmptyKey  = 'Cannot hash an empty key!';
 
 
-{======================== TX2UtCustomHash
+{========================== TX2CustomHash
   Initialization
 ========================================}
-constructor TX2UtCustomHash.Create;
+constructor TX2CustomHash.Create;
 begin
   inherited;
 
-  FHashItemSize := SizeOf(TX2UtHashItem);
+  FHashItemSize := SizeOf(TX2HashItem);
   DataSize      := FHashItemSize;
 end;
 
 
-{======================== TX2UtCustomHash
+{========================== TX2CustomHash
   Hashing
 ========================================}
 procedure Mix(var A, B, C: Cardinal);
@@ -185,7 +207,7 @@ begin
   Dec(C, A); Dec(C, B); B := B shr 15;  C := C xor B;
 end;
 
-function TX2UtCustomHash.Hash;
+function TX2CustomHash.Hash;
 var
   iA:         Cardinal;
   iB:         Cardinal;
@@ -243,10 +265,10 @@ end;
 
 
 
-{======================== TX2UtCustomHash
+{========================== TX2CustomHash
   Tree Traversing
 ========================================}
-function TX2UtCustomHash.ValidCursor;
+function TX2CustomHash.ValidCursor;
 begin
   Result  := inherited ValidCursor(ARaiseError);
   if Result then
@@ -254,18 +276,18 @@ begin
     Result  := Assigned(FHashCursor);
 
     if (not Result) and (ARaiseError) then
-      raise EX2UtBTreeInvalidCursor.Create(RSInvalidCursor);
+      raise EX2BTreeInvalidCursor.Create(RSInvalidCursor);
   end;
 end;
 
-procedure TX2UtCustomHash.ClearCursor;
+procedure TX2CustomHash.ClearCursor;
 begin
   inherited;
 
   FHashCursor := nil;
 end;
 
-function TX2UtCustomHash.Next;
+function TX2CustomHash.Next;
 begin
   if Assigned(FHashCursor) then
     FHashCursor := FHashCursor^.Next;
@@ -274,28 +296,28 @@ begin
   begin
     Result  := inherited Next();
     if Result then
-      FHashCursor := PX2UtHashList(GetNodeData(Cursor))^.Root;
+      FHashCursor := PX2HashList(GetNodeData(Cursor))^.Root;
   end else
     Result  := True;
 end;
 
 
-{======================== TX2UtCustomHash
+{========================== TX2CustomHash
   Item Management
 ========================================}
-function TX2UtCustomHash.GetItemData;
+function TX2CustomHash.GetItemData;
 begin
   Assert(HashDataSize > 0, RSInvalidDataSize);
   Result  := Pointer(Cardinal(AItem) + HashItemSize);
 end;
 
-function TX2UtCustomHash.LookupItem;
+function TX2CustomHash.LookupItem;
 var
   iIndex:     Cardinal;
-  pData:      PX2UtHashList;
-  pFound:     PX2UtHashItem;
-  pItem:      PX2UtHashItem;
-  pLast:      PX2UtHashItem;
+  pData:      PX2HashList;
+  pFound:     PX2HashItem;
+  pItem:      PX2HashItem;
+  pLast:      PX2HashItem;
 
 begin
   Result  := nil;
@@ -304,7 +326,7 @@ begin
 
   if Assigned(ANode) then
   begin
-    pData := PX2UtHashList(GetNodeData(ANode));
+    pData := PX2HashList(GetNodeData(ANode));
     pItem := pData^.Root;
     pLast := nil;
 
@@ -352,12 +374,12 @@ begin
 end;
 
 
-procedure TX2UtCustomHash.Delete;
+procedure TX2CustomHash.Delete;
 var
   bFree:      Boolean;
-  pData:      PX2UtHashList;
-  pNode:      PX2UtBTreeNode;
-  pItem:      PX2UtHashItem;
+  pData:      PX2HashList;
+  pNode:      PX2BTreeNode;
+  pItem:      PX2HashItem;
 
 begin
   pItem := LookupItem(AKey, pNode);
@@ -385,13 +407,13 @@ begin
   inherited Delete(Hash(AKey));
 end;
 
-function TX2UtCustomHash.Exists;
+function TX2CustomHash.Exists;
 begin
   Result  := inherited Exists(Hash(AKey), ASetCursor);
 end;
 
 
-function TX2UtCustomHash.GetCurrentKey;
+function TX2CustomHash.GetCurrentKey;
 begin
   Result  := '';
   if ValidCursor(True) then
@@ -399,13 +421,13 @@ begin
 end;
 
 
-procedure TX2UtCustomHash.FreeNode;
+procedure TX2CustomHash.FreeNode;
 var
-  pData:        PX2UtHashItem;
-  pNext:        PX2UtHashItem;
+  pData:        PX2HashItem;
+  pNext:        PX2HashItem;
 
 begin
-  pData := PX2UtHashList(GetNodeData(ANode))^.Root;
+  pData := PX2HashList(GetNodeData(ANode))^.Root;
   while Assigned(pData) do
   begin
     pNext := pData^.Next;
@@ -417,14 +439,14 @@ begin
 end;
 
 
-procedure TX2UtCustomHash.InitHashItem;
+procedure TX2CustomHash.InitHashItem;
 begin
   Assert(HashDataSize > 0, RSInvalidDataSize);
   GetMem(AItem, HashTotalSize);
   FillChar(AItem^, HashTotalSize, #0);
 end;
 
-procedure TX2UtCustomHash.FreeHashItem;
+procedure TX2CustomHash.FreeHashItem;
 begin
   if Assigned(AItem^.Prev) then
     AItem^.Prev^.Next := AItem^.Next;
@@ -439,26 +461,26 @@ begin
 end;
 
 
-function TX2UtCustomHash.GetHashTotalSize;
+function TX2CustomHash.GetHashTotalSize;
 begin
   Result  := FHashItemSize + FHashDataSize;
 end;
 
 
-{============================== TX2UtHash
+{================================ TX2Hash
   Item Management
 ========================================}
-constructor TX2UtHash.Create;
+constructor TX2Hash.Create;
 begin
   inherited;
 
   HashDataSize  := SizeOf(Pointer);
 end;
 
-function TX2UtHash.GetItem;
+function TX2Hash.GetItem;
 var
-  pNode:        PX2UtBTreeNode;
-  pItem:        PX2UtHashItem;
+  pNode:        PX2BTreeNode;
+  pItem:        PX2HashItem;
 
 begin
   Assert(Length(Key) > 0, RSEmptyKey);
@@ -467,10 +489,10 @@ begin
     Result  := PPointer(GetItemData(pItem))^;
 end;
 
-procedure TX2UtHash.SetItem;
+procedure TX2Hash.SetItem;
 var
-  pNode:        PX2UtBTreeNode;
-  pItem:        PX2UtHashItem;
+  pNode:        PX2BTreeNode;
+  pItem:        PX2HashItem;
 
 begin
   Assert(Length(Key) > 0, RSEmptyKey);
@@ -479,7 +501,7 @@ begin
     PPointer(GetItemData(pItem))^ := Value;
 end;
 
-function TX2UtHash.GetCurrentValue;
+function TX2Hash.GetCurrentValue;
 begin
   Result  := nil;
   if ValidCursor() then
@@ -487,39 +509,39 @@ begin
 end;
 
 
-{======================= TX2UtIntegerHash
+{========================= TX2IntegerHash
   Item Management
 ========================================}
-function TX2UtIntegerHash.GetItem;
+function TX2IntegerHash.GetItem;
 begin
   Result  := Integer(inherited GetItem(Key));
 end;
 
-procedure TX2UtIntegerHash.SetItem;
+procedure TX2IntegerHash.SetItem;
 begin
   inherited SetItem(Key, Pointer(Value));
 end;
 
-function TX2UtIntegerHash.GetCurrentValue;
+function TX2IntegerHash.GetCurrentValue;
 begin
   Result  := Integer(inherited GetCurrentValue());
 end;
 
 
-{======================== TX2UtStringHash
+{========================== TX2StringHash
   Item Management
 ========================================}
-constructor TX2UtStringHash.Create;
+constructor TX2StringHash.Create;
 begin
   inherited;
 
   HashDataSize  := SizeOf(PString);
 end;
 
-function TX2UtStringHash.GetItem;
+function TX2StringHash.GetItem;
 var
-  pNode:        PX2UtBTreeNode;
-  pItem:        PX2UtHashItem;
+  pNode:        PX2BTreeNode;
+  pItem:        PX2HashItem;
 
 begin
   Assert(Length(Key) > 0, RSEmptyKey);
@@ -528,10 +550,10 @@ begin
     Result  := PString(GetItemData(pItem))^;
 end;
 
-procedure TX2UtStringHash.SetItem;
+procedure TX2StringHash.SetItem;
 var
-  pNode:        PX2UtBTreeNode;
-  pItem:        PX2UtHashItem;
+  pNode:        PX2BTreeNode;
+  pItem:        PX2HashItem;
 
 begin
   Assert(Length(Key) > 0, RSEmptyKey);
@@ -541,7 +563,7 @@ begin
 end;
 
 
-procedure TX2UtStringHash.InitHashItem;
+procedure TX2StringHash.InitHashItem;
 var
   pData:        PString;
 
@@ -552,7 +574,7 @@ begin
   Initialize(pData^);
 end;
 
-procedure TX2UtStringHash.FreeHashItem;
+procedure TX2StringHash.FreeHashItem;
 var
   pData:        PString;
 
@@ -564,11 +586,46 @@ begin
 end;
 
 
-function TX2UtStringHash.GetCurrentValue;
+function TX2StringHash.GetCurrentValue;
 begin
   Result  := '';
   if ValidCursor() then
     Result  := PString(GetItemData(HashCursor))^;
+end;
+
+
+{========================== TX2ObjectHash
+  Item Management
+========================================}
+function TX2ObjectHash.GetItem;
+begin
+  Result  := TObject(inherited GetItem(Key));
+end;
+
+procedure TX2ObjectHash.SetItem;
+begin
+  inherited SetItem(Key, Pointer(Value));
+end;
+
+function TX2ObjectHash.GetCurrentValue;
+begin
+  Result  := TObject(inherited GetCurrentValue());
+end;
+
+procedure TX2ObjectHash.FreeHashItem;
+var
+  pObject:      ^TObject;
+
+begin
+  if FOwnsObjects then
+  begin
+    pObject := GetItemData(AItem);
+
+    if Assigned(pObject) then
+      FreeAndNil(pObject^);
+  end;
+
+  inherited;
 end;
 
 end.

@@ -13,7 +13,8 @@ interface
 uses
   Classes,
   SysUtils,
-  Variants;
+  Variants,
+  X2UtHashes;
 
 type
   //:$ Raised when an unregistered setting is requested without providing a
@@ -26,6 +27,18 @@ type
 
   //:$ Raised when the specified range is invalid.
   EX2SettingsRange      = class(Exception);
+
+  //:$ Callback method for defines
+  TX2SettingsCallback   = procedure(const ASection, AName: String;
+                                    var AValue: Variant) of object;
+
+  {
+    :$ Internal representation of defines
+  }
+  TX2SettingsDefine     = class(TObject)
+  private
+
+  end;
 
 
   // Forward declaration
@@ -124,6 +137,25 @@ type
     //:: this into a compatible section.
     //:! The application is responsible for freeing the returned class.
     property Sections[const ASection: String]:    TX2Settings read GetSection; default;
+
+    //:$ Defines a persistent setting
+    //:: Persistent settings are a way for the application to register it's
+    //:: configuration settings on startup with a default value and a range.
+    //:: When reading a setting it will be checked against the specified range
+    //:: (if supplied), or if not found, the registered default value will be
+    //:: returned. This allows the setting to be read in many places without
+    //:: having to do all the checks every time. In addition you may provide
+    //:: a callback method to handle more advanced checks.
+    //:: /n/n
+    //:: Ranges must be specified as an array where each pair of values
+    //:: specifies the minimum and maximum value of that range. The type
+    //:: of the values in the ranges must be the same as the type of the
+    //:: value, and is used later on for type checking. The only exception
+    //:: to this rule is that you are allowed to specify integer ranges for
+    //:: a floating value.
+    procedure Define(const ASection, AName: String; const AValue: Variant;
+                     const ARanges: array of const;
+                     const ACallback: TX2SettingsCallback = nil);
   end;
 
 
@@ -151,53 +183,62 @@ end;
 ========================================}
 function TX2Settings.ReadBool(const AName: String): Boolean;
 begin
-  if not (ValueExists(AName) and InternalReadBool(AName, Result)) then
+  if not InternalReadBool(AName, Result) then
     raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
 end;
 
 function TX2Settings.ReadBool(const AName: String;
                               const ADefault: Boolean): Boolean;
 begin
-  if not (ValueExists(AName) and InternalReadBool(AName, Result)) then
+  if not InternalReadBool(AName, Result) then
     Result  := ADefault;
 end;
 
 function TX2Settings.ReadFloat(const AName: String): Double;
 begin
-  if not (ValueExists(AName) and InternalReadFloat(AName, Result)) then
+  if not InternalReadFloat(AName, Result) then
     raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
 end;
 
 function TX2Settings.ReadFloat(const AName: String;
                                const ADefault: Double): Double;
 begin
-  if not (ValueExists(AName) and InternalReadFloat(AName, Result)) then
+  if not InternalReadFloat(AName, Result) then
     Result  := ADefault;
 end;
 
 function TX2Settings.ReadInteger(const AName: String): Integer;
 begin
-  if not (ValueExists(AName) and InternalReadInteger(AName, Result)) then
+  if not InternalReadInteger(AName, Result) then
     raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
 end;
 
 function TX2Settings.ReadInteger(const AName: String;
                                  const ADefault: Integer): Integer;
 begin
-  if not (ValueExists(AName) and InternalReadInteger(AName, Result)) then
+  if not InternalReadInteger(AName, Result) then
     Result  := ADefault;
 end;
 
 function TX2Settings.ReadString(const AName: String): String;
 begin
-  if not (ValueExists(AName) and InternalReadString(AName, Result)) then
+  if not InternalReadString(AName, Result) then
     raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
 end;
 
 function TX2Settings.ReadString(const AName, ADefault: String): String;
 begin
-  if not (ValueExists(AName) and InternalReadString(AName, Result)) then
+  if not InternalReadString(AName, Result) then
     Result  := ADefault;
+end;
+
+
+{===================== TX2SettingsFactory
+  Defines
+========================================}
+procedure TX2SettingsFactory.Define;
+begin
+  //
 end;
 
 end.
