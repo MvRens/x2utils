@@ -254,6 +254,8 @@ constructor TX2App.Create;
 begin
   inherited;
 
+  FVersion  := TX2AppVersion.Create();
+
   GetPath();
   GetVersion();
 end;

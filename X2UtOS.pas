@@ -85,6 +85,11 @@ type
     constructor Create();
     destructor Destroy(); override;
 
+    //:$ Returns the formatted version information
+    //:: If Build is False, the return value will not include the
+    //:: OS' Build number.
+    function FormatVersion(Build: Boolean = True): String;
+
     //:$ Contains the detected OS version
     property Version:       TX2OSVersion    read FVersion;
 
@@ -203,6 +208,21 @@ begin
         Build := LoWord(pVersion.dwBuildNumber);
     end;
   end;
+end;
+
+
+function TX2OS.FormatVersion;
+var
+  sBuild:     String;
+
+begin
+  sBuild    := '';
+
+  if Build then
+    sBuild    := Format(' build %d', [FVersionEx.Build]);
+
+  with FVersionEx do
+    Result := Format('%s %s%s', [Name, VersionString, sBuild]);
 end;
 
 
