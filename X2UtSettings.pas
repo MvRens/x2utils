@@ -421,7 +421,7 @@ begin
   if Assigned(pDefine) then
     pDefine.Action(saWrite, FSection, AName, vValue);
 
-  InternalWriteInteger(AName, vValue);
+  InternalWriteString(AName, vValue);
 end;
 
 
