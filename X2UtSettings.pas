@@ -184,7 +184,7 @@ resourcestring
   RSInvalidRange  = 'Invalid range!';
   RSInvalidType   = 'Invalid type!';
   RSUndefined     = 'Undefined setting: %s!';
-  RSDefineExists  = 'Define already exists!';
+  RSDefineExists  = 'Define "%s" already exists!';
 
 
 {============================ TX2Settings
@@ -488,7 +488,7 @@ var
 begin
   sHash := ASection + #0 + AName;
   if FDefines.Exists(sHash) then
-    raise EX2SettingsExists.Create(RSDefineExists);
+    raise EX2SettingsExists.CreateFmt(RSDefineExists, [ASection + '.' + AName]);
 
   // Validate type
   vtValue         := CheckVarType(AValue);
