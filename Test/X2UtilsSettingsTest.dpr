@@ -3,6 +3,8 @@ program X2UtilsSettingsTest;
 {$APPTYPE CONSOLE}
 
 uses
+  madExcept,
+  madLinkDisAsm,
   Classes,
   SysUtils,
   Variants,
@@ -11,6 +13,14 @@ uses
   X2UtSettings in '..\X2UtSettings.pas',
   X2UtSettingsINI in '..\X2UtSettingsINI.pas',
   X2UtSettingsRegistry in '..\X2UtSettingsRegistry.pas';
+
+type
+  TCheck  = class(TObject)
+  public
+    class procedure CheckValue(const AAction: TX2SettingsAction;
+                               const ASection, AName: String;
+                               var AValue: Variant);
+  end;
 
 procedure TraverseSection(const ASettings: TX2SettingsFactory;
                           const ASection: String = '';
@@ -65,6 +75,21 @@ begin
   end;
 end;
 
+{ TCheck }
+class procedure TCheck.CheckValue;
+begin
+  if AAction = saWrite then
+  begin
+    if AValue < 0 then
+      AValue  := 0
+    else if AValue > 15 then
+      AValue  := 15
+    else
+      if (AValue > 5) and (AValue < 10) then
+        AValue  := 5;
+  end;
+end;
+
 
 var
   Settings:         TX2SettingsFactory;
@@ -98,7 +123,7 @@ begin
     }
 
     // Test for the definitions
-    Settings.Define('Test', 'Value', 5, [0, 5, 10, 15]);
+    Settings.Define('Test', 'Value', 5, TCheck.CheckValue);
 
     with Settings['Test'] do
     try

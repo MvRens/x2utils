@@ -566,6 +566,7 @@ begin
         if Assigned(pBalance) then
           BalanceInsert(pBalance^);
 
+        Result  := pCurrent^;
         break;
       end else
         break;
@@ -1107,7 +1108,8 @@ var
   pNode:        PX2BTreeNode;
 
 begin
-  pNode := LookupNode(Index);
+  Result  := '';
+  pNode   := LookupNode(Index);
   if Assigned(pNode) then
     Result  := PString(GetNodeData(pNode))^;
 end;

@@ -32,26 +32,27 @@ type
   EX2SettingsExists     = class(Exception);
 
   //:$ Callback method for defines
-  TX2SettingsCallback   = procedure(const ASection, AName: String;
+  TX2SettingsAction     = (saRead, saWrite);
+  TX2SettingsCallback   = procedure(const AAction: TX2SettingsAction;
+                                    const ASection, AName: String;
                                     var AValue: Variant) of object;
 
   {
     :$ Internal representation of a persistent setting
   }
-  TX2SettingsRanges     = array of array[0..1] of Variant;
-
   TX2SettingsDefine     = class(TObject)
   private
     FCallback:      TX2SettingsCallback;
-    FRanges:        TX2SettingsRanges;
     FValue:         Variant;
   public
     constructor Create(const AValue: Variant;
-                       const ARanges: array of const;
                        const ACallback: TX2SettingsCallback);
 
+    procedure Action(const AAction: TX2SettingsAction;
+                     const ASection, AName: String;
+                     var AValue: Variant); 
+
     property Callback:  TX2SettingsCallback read FCallback;
-    property Ranges:    TX2SettingsRanges   read FRanges;
     property Value:     Variant             read FValue;
   end;
 
@@ -73,6 +74,11 @@ type
     function InternalReadFloat(const AName: String; out AValue: Double): Boolean; virtual; abstract;
     function InternalReadInteger(const AName: String; out AValue: Integer): Boolean; virtual; abstract;
     function InternalReadString(const AName: String; out AValue: String): Boolean; virtual; abstract;
+
+    procedure InternalWriteBool(const AName: String; AValue: Boolean); virtual; abstract;
+    procedure InternalWriteFloat(const AName: String; AValue: Double); virtual; abstract;
+    procedure InternalWriteInteger(const AName: String; AValue: Integer); virtual; abstract;
+    procedure InternalWriteString(const AName, AValue: String); virtual; abstract;
 
     property Factory:         TX2SettingsFactory  read FFactory;
     property Section:         String              read FSection;
@@ -109,16 +115,16 @@ type
     function ReadString(const AName, ADefault: String): String; overload; virtual;
 
     //:$ Writes a boolean value to the settings.
-    procedure WriteBool(const AName: String; AValue: Boolean); virtual; abstract;
+    procedure WriteBool(const AName: String; AValue: Boolean); virtual;
 
     //:$ Writes a floating point value to the settings.
-    procedure WriteFloat(const AName: String; AValue: Double); virtual; abstract;
+    procedure WriteFloat(const AName: String; AValue: Double); virtual;
 
     //:$ Writes an integer value to the settings.
-    procedure WriteInteger(const AName: String; AValue: Integer); virtual; abstract;
+    procedure WriteInteger(const AName: String; AValue: Integer); virtual;
 
     //:$ Writes a string value to the settings.
-    procedure WriteString(const AName, AValue: String); virtual; abstract;
+    procedure WriteString(const AName, AValue: String); virtual;
 
     //:$ Checks if the specified setting exists.
     function ValueExists(const AName: String): Boolean; virtual; abstract;
@@ -147,6 +153,7 @@ type
     FDefines:         TX2ObjectHash;
   protected
     function GetSection(const ASection: String): TX2Settings; virtual; abstract;
+    function GetDefine(const ASection, AName: String): TX2SettingsDefine; virtual;
   public
     constructor Create();
     destructor Destroy(); override;
@@ -160,21 +167,9 @@ type
 
     //:$ Defines a persistent setting
     //:: Persistent settings are a way for the application to register it's
-    //:: configuration settings on startup with a default value and a range.
-    //:: When reading a setting it will be checked against the specified range
-    //:: (if supplied), or if not found, the registered default value will be
-    //:: returned. This allows the setting to be read in many places without
-    //:: having to do all the checks every time. In addition you may provide
-    //:: a callback method to handle more advanced checks.
-    //:: /n/n
-    //:: Ranges must be specified as an array where each pair of values
-    //:: specifies the minimum and maximum value of that range. The type
-    //:: of the values in the ranges must be the same as the type of the
-    //:: value, and is used later on for type checking. The only exception
-    //:: to this rule is that you are allowed to specify integer ranges for
-    //:: a floating value.
+    //:: configuration settings on startup with a default value and a possible
+    //:: callback method to perform centralized checks.
     procedure Define(const ASection, AName: String; const AValue: Variant;
-                     const ARanges: array of const;
                      const ACallback: TX2SettingsCallback = nil);
   end;
 
@@ -200,57 +195,237 @@ end;
 
 
 {============================ TX2Settings
-  Read
+  Reading
 ========================================}
 function TX2Settings.ReadBool(const AName: String): Boolean;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
 begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+
   if not InternalReadBool(AName, Result) then
-    raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
+    if Assigned(pDefine) then
+      Result  := pDefine.Value
+    else
+      raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
+
+  if Assigned(pDefine) then
+  begin
+    vValue  := Result;
+    pDefine.Action(saRead, FSection, AName, vValue);
+    Result  := vValue;
+  end;
 end;
 
 function TX2Settings.ReadBool(const AName: String;
                               const ADefault: Boolean): Boolean;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
 begin
   if not InternalReadBool(AName, Result) then
     Result  := ADefault;
+
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+  begin
+    vValue  := Result;
+    pDefine.Action(saRead, FSection, AName, vValue);
+    Result  := vValue;
+  end;
 end;
 
 function TX2Settings.ReadFloat(const AName: String): Double;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
 begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+
   if not InternalReadFloat(AName, Result) then
-    raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
+    if Assigned(pDefine) then
+      Result  := pDefine.Value
+    else
+      raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
+
+  if Assigned(pDefine) then
+  begin
+    vValue  := Result;
+    pDefine.Action(saRead, FSection, AName, vValue);
+    Result  := vValue;
+  end;
 end;
 
 function TX2Settings.ReadFloat(const AName: String;
                                const ADefault: Double): Double;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
 begin
   if not InternalReadFloat(AName, Result) then
     Result  := ADefault;
+
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+  begin
+    vValue  := Result;
+    pDefine.Action(saRead, FSection, AName, vValue);
+    Result  := vValue;
+  end;
 end;
 
 function TX2Settings.ReadInteger(const AName: String): Integer;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
 begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+
   if not InternalReadInteger(AName, Result) then
-    raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
+    if Assigned(pDefine) then
+      Result  := pDefine.Value
+    else
+      raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
+
+  if Assigned(pDefine) then
+  begin
+    vValue  := Result;
+    pDefine.Action(saRead, FSection, AName, vValue);
+    Result  := vValue;
+  end;
 end;
 
 function TX2Settings.ReadInteger(const AName: String;
                                  const ADefault: Integer): Integer;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
 begin
   if not InternalReadInteger(AName, Result) then
     Result  := ADefault;
+
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+  begin
+    vValue  := Result;
+    pDefine.Action(saRead, FSection, AName, vValue);
+    Result  := vValue;
+  end;
 end;
 
 function TX2Settings.ReadString(const AName: String): String;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
 begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+
   if not InternalReadString(AName, Result) then
-    raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
+    if Assigned(pDefine) then
+      Result  := pDefine.Value
+    else
+      raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
+
+  if Assigned(pDefine) then
+  begin
+    vValue  := Result;
+    pDefine.Action(saRead, FSection, AName, vValue);
+    Result  := vValue;
+  end;
 end;
 
 function TX2Settings.ReadString(const AName, ADefault: String): String;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
 begin
   if not InternalReadString(AName, Result) then
     Result  := ADefault;
+
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+  begin
+    vValue  := Result;
+    pDefine.Action(saRead, FSection, AName, vValue);
+    Result  := vValue;
+  end;
+end;
+
+
+{============================ TX2Settings
+  Writing
+========================================}
+procedure TX2Settings.WriteBool;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
+begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+  begin
+    vValue  := AValue;
+    pDefine.Action(saWrite, FSection, AName, vValue);
+  end;
+
+  InternalWriteBool(AName, vValue);
+end;
+
+procedure TX2Settings.WriteFloat;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
+begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+  begin
+    vValue  := AValue;
+    pDefine.Action(saWrite, FSection, AName, vValue);
+  end;
+
+  InternalWriteFloat(AName, vValue);
+end;
+
+procedure TX2Settings.WriteInteger;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
+begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+  begin
+    vValue  := AValue;
+    pDefine.Action(saWrite, FSection, AName, vValue);
+  end;
+
+  InternalWriteInteger(AName, vValue);
+end;
+
+procedure TX2Settings.WriteString;
+var
+  pDefine:      TX2SettingsDefine;
+  vValue:       Variant;
+
+begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+  begin
+    vValue  := AValue;
+    pDefine.Action(saWrite, FSection, AName, vValue);
+  end;
+
+  InternalWriteInteger(AName, vValue);
 end;
 
 
@@ -276,7 +451,7 @@ procedure TX2SettingsFactory.Define;
   function CheckVarType(const AValue: Variant): TVarType;
   begin
     case VarType(AValue) of
-      varBoolean:     break;
+      varBoolean:     Result  := varBoolean;
       varByte,
       varSmallint,
       varInteger,
@@ -294,7 +469,6 @@ procedure TX2SettingsFactory.Define;
   end;
 
 var
-  iIndex:         Integer;
   sHash:          String;
   vtValue:        TVarType;
 
@@ -305,38 +479,14 @@ begin
 
   // Validate type
   vtValue         := CheckVarType(AValue);
-
-  // Validate ranges
-  if High(ARanges) mod 2 <> 0 then
-    raise EX2SettingsRange.Create(RSInvalidRange);
-
-  for iIndex  := 0 to High(ARanges) do
-    case ARanges[iIndex].VType of
-      vtBoolean:
-        if vtValue <> varBoolean then
-          raise EX2SettingsType.Create(RSInvalidType);
-      vtInteger:
-        if not (vtValue in [varInteger, varDouble]) then
-          raise EX2SettingsType.Create(RSInvalidType);
-      vtExtended:
-        if vtValue <> varDouble then
-          raise EX2SettingsType.Create(RSInvalidType);
-      vtString,
-      vtPChar,
-      vtChar,
-      vtWideChar,
-      vtPWideChar,
-      vtWideString,
-      vtAnsiString:
-        if vtValue <> varString then
-          raise EX2SettingsType.Create(RSInvalidType);
-      vtVariant:
-        if vtValue <> CheckVarType(ARanges[iIndex].VVariant^) then
-          raise EX2SettingsType.Create(RSInvalidType);
-    end;
-
   FDefines[sHash] := TX2SettingsDefine.Create(VarAsType(AValue, vtValue),
-                                              ARanges, ACallback);
+                                              ACallback);
+end;
+
+
+function TX2SettingsFactory.GetDefine;
+begin
+  Result  := TX2SettingsDefine(FDefines[ASection + #0 + AName]);
 end;
 
 
@@ -344,44 +494,15 @@ end;
   Initialization
 ========================================}
 constructor TX2SettingsDefine.Create;
-  function VarRecToVariant(const AVarRec: TVarRec): Variant;
-  begin
-    case AVarRec.VType of
-      vtBoolean:    Result  := AVarRec.VBoolean;
-      vtInteger:    Result  := AVarRec.VInteger;
-      vtExtended:   Result  := VarAsType(AVarRec.VExtended^, varDouble);
-      vtString:     Result  := AVarRec.VString^;
-      vtPChar:      Result  := String(AVarRec.VPChar);
-      vtPWideChar:  Result  := String(AVarRec.VPWideChar^);
-      vtWideChar:   Result  := String(AVarRec.VWideChar);
-      vtWideString: Result  := String(AVarRec.VWideString^);
-      vtAnsiString: Result  := String(AVarRec.VAnsiString^);
-      vtVariant:    Result  := AVarRec.VVariant^;
-    end;
-  end;
-
-var
-  iCount:         Integer;
-  iIndex:         Integer;
-  iRange:         Integer;
-
 begin
   FValue    := AValue;
   FCallback := ACallback;
+end;
 
-  // Copy ranges
-  iCount    := (High(ARanges) + 1) div 2;
-  iIndex    := 0;
-
-  SetLength(FRanges, iCount);
-
-  for iRange  := 0 to iCount - 1 do
-  begin
-    FRanges[iRange][0]  := VarRecToVariant(ARanges[iIndex]);
-    FRanges[iRange][1]  := VarRecToVariant(ARanges[iIndex + 1]);
-
-    Inc(iIndex, 2);
-  end;
+procedure TX2SettingsDefine.Action;
+begin
+  if Assigned(FCallback) then
+    FCallback(AAction, ASection, AName, AValue);
 end;
 
 end.

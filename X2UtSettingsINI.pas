@@ -29,12 +29,12 @@ type
     function InternalReadFloat(const AName: String; out AValue: Double): Boolean; override;
     function InternalReadInteger(const AName: String; out AValue: Integer): Boolean; override;
     function InternalReadString(const AName: String; out AValue: String): Boolean; override;
-  public
-    procedure WriteBool(const AName: String; AValue: Boolean); override;
-    procedure WriteFloat(const AName: String; AValue: Double); override;
-    procedure WriteInteger(const AName: String; AValue: Integer); override;
-    procedure WriteString(const AName, AValue: String); override;
 
+    procedure InternalWriteBool(const AName: String; AValue: Boolean); override;
+    procedure InternalWriteFloat(const AName: String; AValue: Double); override;
+    procedure InternalWriteInteger(const AName: String; AValue: Integer); override;
+    procedure InternalWriteString(const AName, AValue: String); override;
+  public
     function ValueExists(const AName: String): Boolean; override;
 
     procedure GetSectionNames(const ADest: TStrings); override;
@@ -135,22 +135,22 @@ end;
 {========================= TX2INISettings
   Write
 ========================================}
-procedure TX2INISettings.WriteBool;
+procedure TX2INISettings.InternalWriteBool;
 begin
   FData.WriteBool(FSection, AName, AValue);
 end;
 
-procedure TX2INISettings.WriteFloat;
+procedure TX2INISettings.InternalWriteFloat;
 begin
   FData.WriteFloat(FSection, AName, AValue);
 end;
 
-procedure TX2INISettings.WriteInteger;
+procedure TX2INISettings.InternalWriteInteger;
 begin
   FData.WriteInteger(FSection, AName, AValue);
 end;
 
-procedure TX2INISettings.WriteString;
+procedure TX2INISettings.InternalWriteString;
 begin
   FData.WriteString(FSection, AName, AValue);
 end;

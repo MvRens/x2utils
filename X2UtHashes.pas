@@ -484,7 +484,8 @@ var
 
 begin
   Assert(Length(Key) > 0, RSEmptyKey);
-  pItem := LookupItem(Key, pNode);
+  Result  := nil;
+  pItem   := LookupItem(Key, pNode);
   if Assigned(pItem) then
     Result  := PPointer(GetItemData(pItem))^;
 end;
@@ -545,7 +546,8 @@ var
 
 begin
   Assert(Length(Key) > 0, RSEmptyKey);
-  pItem := LookupItem(Key, pNode);
+  Result  := '';
+  pItem   := LookupItem(Key, pNode);
   if Assigned(pItem) then
     Result  := PString(GetItemData(pItem))^;
 end;

@@ -38,12 +38,12 @@ type
     function InternalReadFloat(const AName: String; out AValue: Double): Boolean; override;
     function InternalReadInteger(const AName: String; out AValue: Integer): Boolean; override;
     function InternalReadString(const AName: String; out AValue: String): Boolean; override;
-  public
-    procedure WriteBool(const AName: String; AValue: Boolean); override;
-    procedure WriteFloat(const AName: String; AValue: Double); override;
-    procedure WriteInteger(const AName: String; AValue: Integer); override;
-    procedure WriteString(const AName, AValue: String); override;
 
+    procedure InternalWriteBool(const AName: String; AValue: Boolean); override;
+    procedure InternalWriteFloat(const AName: String; AValue: Double); override;
+    procedure InternalWriteInteger(const AName: String; AValue: Integer); override;
+    procedure InternalWriteString(const AName, AValue: String); override;
+  public
     function ValueExists(const AName: String): Boolean; override;
 
     procedure GetSectionNames(const ADest: TStrings); override;
@@ -197,25 +197,25 @@ end;
 {==================== TX2RegistrySettings
   Write
 ========================================}
-procedure TX2RegistrySettings.WriteBool;
+procedure TX2RegistrySettings.InternalWriteBool;
 begin
   if OpenWrite() then
     FData.WriteBool(AName, AValue);
 end;
 
-procedure TX2RegistrySettings.WriteFloat;
+procedure TX2RegistrySettings.InternalWriteFloat;
 begin
   if OpenWrite() then
     FData.WriteFloat(AName, AValue);
 end;
 
-procedure TX2RegistrySettings.WriteInteger;
+procedure TX2RegistrySettings.InternalWriteInteger;
 begin
   if OpenWrite() then
     FData.WriteInteger(AName, AValue);
 end;
 
-procedure TX2RegistrySettings.WriteString;
+procedure TX2RegistrySettings.InternalWriteString;
 begin
   if OpenWrite() then
     FData.WriteString(AName, AValue);
