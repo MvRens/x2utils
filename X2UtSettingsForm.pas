@@ -26,15 +26,18 @@ procedure ReadFormPos(const AFactory: TX2SettingsFactory;
 begin
   with AFactory[ASection] do
   try
-    if ReadBool('Maximized', (AForm.WindowState = wsMaximized)) then
-      AForm.WindowState := wsMaximized
-    else with THackCustomForm(AForm) do begin
-      WindowState       := wsNormal;
-      Position          := poDefaultPosOnly;
-      Left              := ReadInteger('Left', Left);
-      Top               := ReadInteger('Top', Top);
-      Width             := ReadInteger('Width', Width);
-      Height            := ReadInteger('Height', Height);
+    if ValueExists('Left') then
+    begin
+      if ReadBool('Maximized', (AForm.WindowState = wsMaximized)) then
+        AForm.WindowState := wsMaximized
+      else with THackCustomForm(AForm) do begin
+        WindowState       := wsNormal;
+        Position          := poDesigned;
+        Left              := ReadInteger('Left', Left);
+        Top               := ReadInteger('Top', Top);
+        Width             := ReadInteger('Width', Width);
+        Height            := ReadInteger('Height', Height);
+      end;
     end;
   finally
     Free();
