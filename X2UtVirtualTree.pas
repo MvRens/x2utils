@@ -11,9 +11,10 @@ unit X2UtVirtualTree;
 interface
 uses
   Graphics,
-  VirtualTrees;
+  VirtualTrees,
+  Windows;
 
-  //:$ Applies the sort order on the specified column
+  //:$ Applies the sort order on the specified column.
   //:: When a column is already sorted, the sort order is reversed.
   //:: Specify a SortColor to provide the new column with that color
   //:: (similar to Explorer in Windows XP). If you choose to use SortColor,
@@ -23,9 +24,16 @@ uses
                        const AColumn: TColumnIndex;
                        const ASortColor: TColor = clNone);
 
+  //:$ Calculates the position of an image in a virtual string tree.
+  function CalcImagePos(const ATree: TVirtualStringTree;
+                        const ANode: PVirtualNode;
+                        const AItemRect: TRect): TPoint;
+
 implementation
 
-procedure SortColumn;
+procedure SortColumn(const AHeader: TVTHeader;
+                     const AColumn: TColumnIndex;
+                     const ASortColor: TColor = clNone);
 begin
   with AHeader do
   begin
@@ -50,6 +58,29 @@ begin
         Tag   := Color;
         Color := ASortColor;
       end;
+  end;
+end;
+
+function CalcImagePos(const ATree: TVirtualStringTree;
+                      const ANode: PVirtualNode;
+                      const AItemRect: TRect): TPoint;
+var
+  pNode:      PVirtualNode;
+
+begin
+  Result  := AItemRect.TopLeft;
+
+  with ATree do
+  begin
+    pNode := ANode;
+    while Assigned(pNode) and (pNode <> ATree.RootNode) do
+    begin
+      Inc(Result.X, Indent);
+      pNode := pNode^.Parent;
+    end;
+
+    Inc(Result.X, Margin);
+    Inc(Result.Y, (Integer(NodeHeight[ANode]) - Images.Height) div 2);
   end;
 end;
 
