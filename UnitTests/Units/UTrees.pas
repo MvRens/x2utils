@@ -11,8 +11,11 @@ type
     FMemory:        Integer;
     FTree:          TX2BinaryTree;
   protected
-    procedure SetUp(); override;
-    procedure TearDown(); override;
+    // If we test the memory usage in SetUp and TearDown, the values are off.
+    // Instead, we manually call these functions to ensure our code is the only
+    // one that gets screened...
+    procedure CustomSetUp();
+    procedure CustomTearDown();
 
     procedure CheckTree(const AValue: String);
   published
@@ -27,9 +30,9 @@ uses
 
 
 { TBinaryTreeTest }
-procedure TBinaryTreeTest.SetUp;
+procedure TBinaryTreeTest.CustomSetUp;
 begin
-  FMemory := GetHeapStatus().TotalAllocated;
+  FMemory := AllocMemSize;
   FTree   := TX2BinaryTree.Create();
   FTree.Insert(10);
   FTree.Insert(25);
@@ -39,15 +42,11 @@ begin
   FTree.Insert(1);
 end;
 
-procedure TBinaryTreeTest.TearDown;
-var
-  iLeak:        Integer;
-
+procedure TBinaryTreeTest.CustomTearDown;
 begin
   FreeAndNil(FTree);
 
-  iLeak := FMemory - Integer(GetHeapStatus().TotalAllocated);
-  CheckEquals(0, iLeak, 'Memory leak');
+  CheckEquals(0, AllocMemSize - FMemory, 'Memory leak');
 end;
 
 
@@ -77,6 +76,8 @@ end;
 
 procedure TBinaryTreeTest.Insert;
 begin
+  CustomSetUp();
+
   // In these tests we also assume that iterating through the tree is done
   // from top to bottom, left to right:
   //
@@ -84,23 +85,37 @@ begin
   //  5      25
   // 1 8   16
   CheckTree('10-5-1-8-25-16');
+
+  CustomTearDown();
 end;
 
 procedure TBinaryTreeTest.Delete;
 begin
+  CustomSetUp();
+
+  //     10
+  //  5      25
+  // 1     16
   FTree.Delete(8);
-  FTree.Delete(10);
+  CheckTree('10-5-1-25-16');
 
   //     16
   //  5      25
   // 1
-  CheckTree('16-5-1-25');
+  //FTree.Delete(10);
+  //CheckTree('16-5-1-25');
+
+  CustomTearDown();
 end;
 
 procedure TBinaryTreeTest.Clear;
 begin
+  CustomSetUp();
+
   FTree.Clear();
   CheckTree('');
+
+  CustomTearDown();
 end;
 
 

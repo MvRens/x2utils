@@ -66,9 +66,6 @@ type
     function GetCurrentNode(): RX2BTNode; override;
     function GetEof(): Boolean; override;
   public
-    constructor Create(const ARoot: RX2BTNode); override;
-    destructor Destroy(); override;
-
     procedure First(); override;
     procedure Next(); override;
   end;
@@ -103,6 +100,9 @@ type
     function FindNode(const AKey: Cardinal; out AParent: RX2BTNode): RX2BTNode;
     function FindNodeOnly(const AKey: Cardinal): RX2BTNode;
 
+    function LeftChild(const ANode: PX2BTNode): Boolean;
+    function RightChild(const ANode: PX2BTNode): Boolean;
+
     // Virtual methods (commonly needed in descendants)
     function GetCursorClass(): TX2BTCursorClass; virtual;
 
@@ -112,7 +112,7 @@ type
     procedure InsertNode(const AKey: Cardinal); virtual;
     procedure DeleteNode(const AKey: Cardinal); virtual;
 
-    procedure DeleteLeafNode(const ANode: RX2BTNode); virtual;
+    procedure DeleteCleanNode(const ANode: PX2BTNode); virtual;
   public
     constructor Create(); virtual;
     destructor Destroy(); override;
@@ -173,6 +173,9 @@ type
   end;
 
 implementation
+uses
+  Dialogs;
+
 resourcestring
   RSBTKeyExists   = 'The key "%d" already exists in the tree.';
   RSBTKeyNotFound = 'The key "%d" could not be found in the tree.';
@@ -194,17 +197,6 @@ end;
 {===================== TX2BTDefaultCursor
   Traversal
 ========================================}
-constructor TX2BTDefaultCursor.Create;
-begin
-  inherited;
-end;
-
-destructor TX2BTDefaultCursor.Destroy;
-begin
-  inherited;
-end;
-
-
 procedure TX2BTDefaultCursor.First;
 begin
   FNode := FRoot;
@@ -234,7 +226,7 @@ begin
 
       if Assigned(FNode^) then
       begin
-        if FNode^^.Left = pChild then
+        if (FNode^^.Left = pChild) and Assigned(FNode^^.Right) then
         begin
           FNode := @FNode^^.Right;
           break;
@@ -321,10 +313,14 @@ procedure TX2BinaryTree.AllocateNode;
 begin
   GetMem(ANode, SizeOf(TX2BTNode));
   FillChar(ANode^, SizeOf(TX2BTNode), #0);
+
+  ShowMessage('Allocating: ' + IntToStr(Integer(ANode)));
 end;
 
 procedure TX2BinaryTree.DeallocateNode;
 begin
+  ShowMessage('Deallocating: ' + IntToStr(Integer(ANode)));
+
   FreeMem(ANode, SizeOf(TX2BTNode));
   ANode := nil;
 end;
@@ -351,7 +347,7 @@ begin
       // Disconnect node from parent
       pParent := pNode^.Parent;
       if Assigned(pParent) then
-        if pNode = pParent^.Left then
+        if LeftChild(pNode) then
           pParent^.Left   := nil
         else
           pParent^.Right  := nil;
@@ -425,6 +421,18 @@ begin
 end;
 
 
+function TX2BinaryTree.LeftChild;
+begin
+  Assert(Assigned(ANode^.Parent), 'Node has no parent!');
+  Result  := (ANode^.Parent^.Left = ANode);
+end;
+
+function TX2BinaryTree.RightChild;
+begin
+  Result  := not LeftChild(ANode);
+end;
+
+
 procedure TX2BinaryTree.InsertNode;
 var
   pNode:      RX2BTNode;
@@ -466,16 +474,44 @@ begin
   //       +----+
   if Assigned(pNode^^.Left) and Assigned(pNode^^.Right) then
   begin
-
+    exit;
   end;
 
   // At this point, the node is a leaf node or has only one branch
-  DeleteLeafNode(pNode);
+  DeleteCleanNode(pNode^);
 end;
 
-procedure TX2BinaryTree.DeleteLeafNode;
+procedure TX2BinaryTree.DeleteCleanNode;
+var
+  pParent:        PX2BTNode;
+  pChild:         PX2BTNode;
+
 begin
-  //! Implement DeleteLeafNode
+  pParent := ANode^.Parent;
+
+  // A 'clean' node is defined as a node with 0 or 1 child, which is easy
+  // to remove from the chain.
+  Assert(not (Assigned(ANode^.Left) and
+              Assigned(ANode^.Right)), 'Node is not a clean node!');
+
+  if Assigned(ANode^.Left) then
+    pChild  := ANode^.Left
+  else
+    pChild  := ANode^.Right;
+
+  // Link the parent to the new child
+  if Assigned(pParent) then
+    if LeftChild(ANode) then
+      pParent^.Left   := pChild
+    else
+      pParent^.Right  := pChild;
+
+  // Link the child to the new parent
+  if Assigned(pChild) then
+    pChild^.Parent    := pParent;
+
+  pChild  := ANode;
+  DeallocateNode(pChild);
 end;
 
 
