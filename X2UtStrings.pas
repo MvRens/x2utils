@@ -73,7 +73,7 @@ type
   *}
   procedure Split(const ASource, ADelimiter: String; out ADest: TSplitArray);
 
-  {** Appends string parts with a specified glue value
+  {** Appends string parts with a specified glue value.
    *
    * @param ASource     the source parts
    * @param AGlue       the string added between the parts
@@ -81,11 +81,24 @@ type
   *}
   function Join(const ASource: TSplitArray; const AGlue: String): String;
 
+  {** Determines if one path is the child of another path.
+   *
+   * Matches the start of two normalized paths. Either of the path may contain
+   * parent-references (ex. 'some\..\..\path\'). Note that the file system is
+   * not actually accessed, all checks are performed on the strings only.
+   *
+   * @param AChild      the path to check
+   * @param AParent     the path which is supposed to be the parent
+   * @result            True if the child is indeed a child of the parent,
+   *                    False otherwise.
+  *}
+  function ChildPath(const AChild, AParent: String): Boolean;
+
 implementation
 uses
   SysUtils;
 
-function FormatSize;
+function FormatSize(const ABytes: Int64; AKeepBytes: Boolean = False): String;
 const
   KB  = 1024;
   MB  = KB * 1024;
@@ -117,7 +130,8 @@ begin
   Result  := FormatFloat(',0.##', dSize) + sExt;
 end;
 
-function CompareTextL;
+function CompareTextL(const AMatch, AAgainst: String;
+                      const ALength: Integer): Integer;
 var
   sMatch:       String;
   sAgainst:     String;
@@ -137,23 +151,24 @@ begin
   Result  := CompareText(sMatch, sAgainst);
 end;
 
-function SameTextL;
+function SameTextL(const AMatch, AAgainst: String;
+                   const ALength: Integer): Boolean;
 begin
   Result  := (CompareTextL(AMatch, AAgainst, ALength) = 0);
 end;
 
-function CompareTextS;
+function CompareTextS(const AMatch, AAgainst: String): Integer;
 begin
   Result  := CompareTextL(AMatch, AAgainst, Length(AAgainst));
 end;
 
-function SameTextS;
+function SameTextS(const AMatch, AAgainst: String): Boolean;
 begin
   Result  := SameTextL(AMatch, AAgainst, Length(AAgainst));
 end;
 
 
-procedure Split;
+procedure Split(const ASource, ADelimiter: String; out ADest: TSplitArray);
   // StrPos is slow. Sloooooow slow. This function may not be advanced or
   // the fastest one around, but it sure kicks StrPos' ass.
   // 11.5 vs 1.7 seconds on a 2.4 Ghz for 10.000 iterations, baby!
@@ -274,7 +289,7 @@ begin
   until False;
 end;
 
-function Join;
+function Join(const ASource: TSplitArray; const AGlue: String): String;
 var
   iGlue:          Integer;
   iHigh:          Integer;
@@ -319,6 +334,18 @@ begin
     Dec(pPos, iLength);
     Move(PChar(ASource[iItem])^, pPos^, iLength);
   end;
+end;
+
+
+function ChildPath(const AChild, AParent: String): Boolean;
+var
+  sChild:       String;
+  sParent:      String;
+
+begin
+  sChild  := IncludeTrailingPathDelimiter(ExpandFileName(AChild));
+  sParent := IncludeTrailingPathDelimiter(ExpandFileName(AParent));
+  Result  := SameTextS(sChild, sParent);
 end;
 
 end.
