@@ -92,6 +92,7 @@ type
   TX2BTCustomManager  = class(TObject)
   private
     FCursor:      TX2BTCustomCursor;
+    FDataSize:    Cardinal;
   protected
     function GetCurrentKey(): Cardinal; virtual;
     function GetEof(): Boolean; virtual;
@@ -105,8 +106,8 @@ type
     destructor Destroy(); override;
 
     procedure Clear(); virtual; abstract;
-    procedure Insert(const AKey: Cardinal); virtual; abstract;
-    procedure Delete(const AKey: Cardinal); virtual; abstract;
+    function Insert(const AKey: Cardinal): Boolean; virtual; abstract;
+    function Delete(const AKey: Cardinal): Boolean; virtual; abstract;
 
     function Exists(const AKey: Cardinal): Boolean; virtual; abstract;
     function GetData(const AKey: Cardinal): Pointer; virtual; abstract;
@@ -115,6 +116,7 @@ type
     procedure Next(); virtual;
 
     property CurrentKey:      Cardinal  read GetCurrentKey;
+    property DataSize:        Cardinal  read FDataSize  write FDataSize;
     property Eof:             Boolean   read GetEof;
   end;
 
@@ -125,8 +127,8 @@ type
   *}
   TX2BTDefaultManager = class(TX2BTCustomManager)
   private
-    FRoot:        PX2BTNode;
     FLastNode:    PX2BTNode;
+    FRoot:        PX2BTNode;
   protected
     procedure CursorNeeded(); override;
     procedure InvalidateCursor(); override;
@@ -144,10 +146,12 @@ type
 
     procedure AllocateNode(var ANode: PX2BTNode); virtual;
     procedure DeallocateNode(var ANode: PX2BTNode); virtual;
+
+    function GetNodeSize(): Cardinal; virtual;
   public
     procedure Clear(); override;
-    procedure Insert(const AKey: Cardinal); override;
-    procedure Delete(const AKey: Cardinal); override;
+    function Insert(const AKey: Cardinal): Boolean; override;
+    function Delete(const AKey: Cardinal): Boolean; override;
 
     function Exists(const AKey: Cardinal): Boolean; override;
     function GetData(const AKey: Cardinal): Pointer; override;
@@ -222,6 +226,24 @@ type
      * positioned at a valid node.
     *}
     property Eof:             Boolean   read GetEof;
+  end;
+
+  {** Binary Tree with integer data.
+   *
+   * Extends the standard Binary Tree, allowing it to store an Integer value
+   * for each node in the tree.
+  *}
+  TX2IntegerTree      = class(TX2BinaryTree)
+  private
+    function GetItem(const AKey: Cardinal): Integer;
+    procedure SetItem(const AKey: Cardinal; const Value: Integer);
+    function GetCurrentValue: Integer;
+  public
+    constructor Create(); override;
+
+    property CurrentValue:                  Integer read GetCurrentValue;
+    property Items[const AKey: Cardinal]:   Integer read GetItem
+                                                    write SetItem; default;
   end;
 
 implementation
@@ -353,15 +375,24 @@ end;
   Node Management
 ========================================}
 procedure TX2BTDefaultManager.AllocateNode;
+var
+  iSize:      Cardinal;
+
 begin
-  GetMem(ANode, SizeOf(TX2BTNode));
-  FillChar(ANode^, SizeOf(TX2BTNode), #0);
+  iSize := GetNodeSize() + FDataSize;
+  GetMem(ANode, iSize);
+  FillChar(ANode^, iSize, #0);
 end;
 
 procedure TX2BTDefaultManager.DeallocateNode;
 begin
-  FreeMem(ANode, SizeOf(TX2BTNode));
+  FreeMem(ANode, GetNodeSize() + FDataSize);
   ANode := nil;
+end;
+
+function TX2BTDefaultManager.GetNodeSize;
+begin
+  Result  := SizeOf(TX2BTNode);
 end;
 
 
@@ -511,16 +542,18 @@ begin
 end;
 
 
-procedure TX2BTDefaultManager.Insert;
+function TX2BTDefaultManager.Insert;
 var
   pNode:      PX2BTNode;
   pParent:    PX2BTNode;
 
 begin
-  pNode := FindNode(AKey, pParent);
+  Result  := False;
+  pNode   := FindNode(AKey, pParent);
   if Assigned(pNode) then
-    raise EBTKeyExists.CreateFmt(RSBTKeyExists, [AKey]);
+    exit;
 
+  Result  := True;
   InvalidateCursor();
   AllocateNode(pNode);
   FLastNode       := pNode;
@@ -540,16 +573,18 @@ begin
   end;
 end;
 
-procedure TX2BTDefaultManager.Delete;
+function TX2BTDefaultManager.Delete;
 var
   pNode:      PX2BTNode;
   pLowest:    PX2BTNode;
 
 begin
-  pNode := FindNodeOnly(AKey);
+  Result  := False;
+  pNode   := FindNodeOnly(AKey);
   if not Assigned(pNode) then
-    raise EBTKeyNotFound.CreateFmt(RSBTKeyNotFound, [AKey]);
+    exit;
 
+  Result  := True;
   InvalidateCursor();
   
   // If the node to be deleted has either one or no branch, it can simply be
@@ -615,8 +650,15 @@ begin
 end;
 
 function TX2BTDefaultManager.GetData;
+var
+  pNode:      PX2BTNode;
+
 begin
-  //! Implement GetData
+  pNode   := FindNodeOnly(AKey);
+  if not Assigned(pNode) then
+    raise EBTKeyNotFound.CreateFmt(RSBTKeyNotFound, [AKey]);
+
+  Result  := Pointer(Cardinal(pNode) + GetNodeSize());
 end;
 
 
@@ -666,12 +708,14 @@ end;
 
 procedure TX2BinaryTree.Insert;
 begin
-  FManager.Insert(AKey);
+  if not FManager.Insert(AKey) then
+    raise EBTKeyExists.CreateFmt(RSBTKeyExists, [AKey]);
 end;
 
 procedure TX2BinaryTree.Delete;
 begin
-  FManager.Delete(AKey);
+  if not FManager.Delete(AKey) then
+    raise EBTKeyNotFound.CreateFmt(RSBTKeyNotFound, [AKey]);
 end;
 
 
@@ -700,6 +744,35 @@ end;
 function TX2BinaryTree.GetEof;
 begin
   Result  := FManager.Eof;
+end;
+
+
+{========================= TX2IntegerTree
+  Initialization
+========================================}
+constructor TX2IntegerTree.Create;
+begin
+  inherited;
+
+  FManager.DataSize := SizeOf(Integer);
+end;
+
+
+function TX2IntegerTree.GetCurrentValue;
+begin
+  Result  := GetItem(FManager.CurrentKey);
+end;
+
+
+function TX2IntegerTree.GetItem;
+begin
+  Result  := PInteger(FManager.GetData(AKey))^;
+end;
+
+procedure TX2IntegerTree.SetItem;
+begin
+  FManager.Insert(AKey);
+  PInteger(FManager.GetData(AKey))^ := Value;
 end;
 
 end.
