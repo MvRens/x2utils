@@ -1,6 +1,6 @@
 {
-  :: X2App provides a singleton App object to access properties associated
-  :: to the application, such as the version number or executable path.
+  :: X2UtApp provides a singleton App object to access properties associated
+  :: with the application, such as the version number or executable path.
   :: It is part of the X2Utils suite.
   ::
   :: Subversion repository available at:
@@ -36,7 +36,7 @@
   :$ /n/n
   :$ 3. This notice may not be removed or altered from any source distribution.
 }
-unit X2App;
+unit X2UtApp;
 
 interface
 uses
@@ -176,7 +176,7 @@ var
   GApp:       TX2App;
 
 {$I X2UtCompilerVersion.inc}
-  
+
 
 {========================================
   Singleton
