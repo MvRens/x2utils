@@ -8,7 +8,7 @@
   ::
   :: Last changed:    $Date$
   :: Revision:        $Rev$
-  :: Author:          $$LastChangedBy$
+  :: Author:          $LastChangedBy$
 
   :$
   :$
