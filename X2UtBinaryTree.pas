@@ -50,6 +50,8 @@ type
     procedure Clear();
     procedure Push(const ANode: PX2UtBTreeNode);
     function Pop(): PX2UtBTreeNode;
+
+    procedure Reverse();
   end;
 
   {
@@ -57,20 +59,21 @@ type
 
     :: This class implements a binary tree of pointer values.
   }
-  TX2UtBTree      = class(TObject)
+  TX2UtCustomBTree  = class(TObject)
   private
     FRoot:          PX2UtBTreeNode;
     FCursor:        PX2UtBTreeNode;
     FIsReset:       Boolean;
     FParent:        TX2UtBTreeStack;
-
+  protected
     function GetItem(Index: Cardinal): Pointer;
     procedure SetItem(Index: Cardinal; const Value: Pointer);
     function GetCurrentIndex(): Cardinal;
     function GetCurrentValue(): Pointer;
-  protected
+
     function LookupNode(const AIndex: Cardinal;
-                        const ACreate: Boolean = True): PX2UtBTreeNode; virtual;
+                        const ACreate: Boolean = False;
+                        const ACursor: Boolean = False): PX2UtBTreeNode; virtual;
 
     procedure NewNode(const AParent: PX2UtBTreeNode;
                       var ANode: PX2UtBTreeNode;
@@ -84,17 +87,33 @@ type
     property Root:      PX2UtBTreeNode  read FRoot;
     property IsReset:   Boolean         read FIsReset   write FIsReset;
     property Parent:    TX2UtBTreeStack read FParent;
+
+    
+    //:$ Gets or sets an item.
+    property Items[Index: Cardinal]:    Pointer read GetItem
+                                                write SetItem; default;
+
+    //:$ Returns the index at the current cursor location.
+    property CurrentIndex:      Cardinal        read GetCurrentIndex;
+
+    //:$ Returns the value at the current cursor location.
+    property CurrentValue:      Pointer         read GetCurrentValue;
   public
     constructor Create();
     destructor Destroy(); override;
 
-    //:$ Clears the tree
+    //:$ Clears the tree.
     procedure Clear();
 
-    //:$ Deletes a node from the tree
+    //:$ Deletes a node from the tree.
     procedure Delete(const AIndex: Cardinal);
 
-    //:$ Resets the node cursor
+    //:$ Checks if an index exists in the tree.
+    //:: If the ASetCursor parameter is set to True, the cursor will be
+    //:: positioned at the item if it is found.
+    function Exists(const AIndex: Cardinal; const ASetCursor: Boolean = False): Boolean;
+
+    //:$ Resets the node cursor.
     //:: The node cursor can be used to traverse through the binary tree.
     //:: Call Reset first, followed by Next to get the first item. You can
     //:: continue to call Next until it returns false. The CurrentIndex and
@@ -103,27 +122,29 @@ type
     //:! until the next Reset call.
     procedure Reset();
 
-    //:$ Moves the node cursor to the next node
+    //:$ Moves the node cursor to the next node.
     //:! The order in which nodes are traversed is from top to bottom, left
     //:! to right. Do not depend on the binary tree to sort the output.
     function Next(): Boolean;
+  end;
 
-    //:$ Gets or sets an item.
-    property Items[Index: Cardinal]:    Pointer read GetItem
-                                                write SetItem; default;
+  {
+    :$ Binary tree implementation
 
-    //:$ Returns the index at the current cursor location
-    property CurrentIndex:      Cardinal        read GetCurrentIndex;
-
-    //:$ Returns the value at the current cursor location
-    property CurrentValue:      Pointer         read GetCurrentValue;
+    :: This class exposes TX2UtCustomBTree's properties
+  }
+  TX2UtBTree        = class(TX2UtCustomBTree)
+  public
+    property Items;
+    property CurrentIndex;
+    property CurrentValue;
   end;
 
   {
     :$ Binary tree implementation for integer values
   }
   TX2UtIntegerBTree = class(TX2UtBTree)
-  private
+  protected
     function GetItem(Index: Cardinal): Integer;
     procedure SetItem(Index: Cardinal; const Value: Integer);
     function GetCurrentValue(): Integer;
@@ -140,7 +161,7 @@ type
     :$ Binary tree implementation for string values
   }
   TX2UtStringBTree  = class(TX2UtBTree)
-  private
+  protected
     function GetItem(Index: Cardinal): String;
     procedure SetItem(Index: Cardinal; const Value: String);
     function GetCurrentValue(): String;
@@ -166,10 +187,7 @@ const
   CStackSize      = 32;
 
 type
-  PStringRecord   = ^TStringRecord;
-  TStringRecord   = record
-    Value:        String;
-  end;
+  PString         = ^String;
 
 
 {======================== TX2UtBTreeStack
@@ -215,10 +233,30 @@ begin
 end;
 
 
-{============================= TX2UtBTree
+procedure TX2UtBTreeStack.Reverse;
+var
+  iCount:       Integer;
+  iIndex:       Integer;
+  pSwap:        PX2UtBTreeNode;
+
+begin
+  if FPosition = -1 then
+    exit;
+
+  iCount  := (FPosition + 1) div 2;
+  for iIndex  := 0 to iCount - 1 do
+  begin
+    pSwap                       := FItems[iIndex];
+    FItems[iIndex]              := FItems[FPosition - iIndex];
+    FItems[FPosition - iIndex]  := pSwap;
+  end;
+end;
+
+
+{======================= TX2UtCustomBTree
   Initialization
 ========================================}
-constructor TX2UtBTree.Create;
+constructor TX2UtCustomBTree.Create;
 begin
   inherited;
 
@@ -226,7 +264,7 @@ begin
   FParent := TX2UtBTreeStack.Create();
 end;
 
-destructor TX2UtBTree.Destroy;
+destructor TX2UtCustomBTree.Destroy;
 begin
   FreeAndNil(FParent);
   DeleteNode(FRoot);
@@ -235,10 +273,10 @@ begin
 end;
 
 
-{============================= TX2UtBTree
+{======================= TX2UtCustomBTree
   Tree Management
 ========================================}
-function TX2UtBTree.LookupNode;
+function TX2UtCustomBTree.LookupNode;
 var
   pNode:      PX2UtBTreeNode;
 
@@ -250,7 +288,15 @@ begin
   begin
     InitNode(pNode);
     pNode^.Index  := AIndex;
-    Result        := pRoot;
+    Result        := pNode;
+
+    if ACursor then
+    begin
+      Parent.Clear();
+      IsReset := False;
+      Cursor  := pNode;
+    end;
+
     exit;
   end;
 
@@ -292,10 +338,24 @@ begin
       end;
     end;
   end;
+
+  if ACursor and Assigned(Result) then
+  begin
+    // Trace parents
+    pNode := Result^.Parent;
+    while Assigned(pNode) do
+    begin
+      Parent.Push(pNode);
+      pNode := pNode^.Parent;
+    end;
+
+    // Parents are now in reverse order
+    Parent.Reverse();
+  end;
 end;
 
 
-procedure TX2UtBTree.NewNode;
+procedure TX2UtCustomBTree.NewNode;
 begin
   New(ANode);
   FillChar(ANode^, SizeOf(TX2UtBTreeNode), #0);
@@ -306,12 +366,12 @@ begin
     InitNode(ANode);
 end;
 
-procedure TX2UtBTree.InitNode;
+procedure TX2UtCustomBTree.InitNode;
 begin
   // Reserved for descendants
 end;
 
-procedure TX2UtBTree.DeleteNode;
+procedure TX2UtCustomBTree.DeleteNode;
 begin
   if Assigned(ANode^.Left) then
     DeleteNode(ANode^.Left);
@@ -332,39 +392,45 @@ begin
 end;
 
 
-procedure TX2UtBTree.Clear;
+procedure TX2UtCustomBTree.Clear;
 begin
   DeleteNode(FRoot);
   NewNode(nil, FRoot, False);
 end;
 
-procedure TX2UtBTree.Delete;
+procedure TX2UtCustomBTree.Delete;
 var
   pItem:      PX2UtBTreeNode;
 
 begin
-  pItem := LookupNode(AIndex, False);
+  pItem := LookupNode(AIndex);
   if Assigned(pItem) then
     DeleteNode(pItem);
 end;
 
+function TX2UtCustomBTree.Exists;
+begin
+  Result  := Assigned(LookupNode(AIndex, False, True));
+end;
 
-{============================= TX2UtBTree
+
+
+{======================= TX2UtCustomBTree
   Tree Traversing
 ========================================}
-procedure TX2UtBTree.ClearCursor;
+procedure TX2UtCustomBTree.ClearCursor;
 begin
   Cursor    := nil;
 end;
 
 
-procedure TX2UtBTree.Reset;
+procedure TX2UtCustomBTree.Reset;
 begin
   Cursor    := Root;
   IsReset   := True;
 end;
 
-function TX2UtBTree.Next;
+function TX2UtCustomBTree.Next;
 var
   pParent:        PX2UtBTreeNode;
   pCurrent:       PX2UtBTreeNode;
@@ -418,7 +484,7 @@ begin
   end;
 end;
 
-function TX2UtBTree.GetCurrentIndex;
+function TX2UtCustomBTree.GetCurrentIndex;
 begin
   if Assigned(Cursor) and (not IsReset) then
     Result  := Cursor^.Index
@@ -426,7 +492,7 @@ begin
     raise EX2UtBTreeInvalidCursor.Create(RSInvalidCursor);
 end;
 
-function TX2UtBTree.GetCurrentValue;
+function TX2UtCustomBTree.GetCurrentValue;
 begin
   if Assigned(Cursor) and (not IsReset) then
     Result  := Cursor^.Value
@@ -435,26 +501,26 @@ begin
 end;
 
 
-{============================= TX2UtBTree
+{======================= TX2UtCustomBTree
   Items
 ========================================}
-function TX2UtBTree.GetItem;
+function TX2UtCustomBTree.GetItem;
 var
   pItem:      PX2UtBTreeNode;
 
 begin
   Result  := nil;
-  pItem   := LookupNode(Index, False);
+  pItem   := LookupNode(Index);
   if Assigned(pItem) then
     Result  := pItem^.Value;
 end;
 
-procedure TX2UtBTree.SetItem;
+procedure TX2UtCustomBTree.SetItem;
 var
   pItem:      PX2UtBTreeNode;
 
 begin
-  pItem := LookupNode(Index);
+  pItem := LookupNode(Index, True);
   if Assigned(pItem) then
     pItem^.Value  := Value;
 end;
@@ -488,9 +554,9 @@ var
 
 begin
   Result  := '';
-  pItem   := LookupNode(Index, False);
+  pItem   := LookupNode(Index);
   if Assigned(pItem) then
-    Result  := PStringRecord(pItem^.Value)^.Value;
+    Result  := PString(pItem^.Value)^;
 end;
 
 procedure TX2UtStringBTree.SetItem;
@@ -498,35 +564,35 @@ var
   pItem:      PX2UtBTreeNode;
 
 begin
-  pItem := LookupNode(Index);
+  pItem := LookupNode(Index, True);
   if Assigned(pItem) then
-    PStringRecord(pItem^.Value)^.Value  := Value;
+    PString(pItem^.Value)^  := Value;
 end;
 
 function TX2UtStringBTree.GetCurrentValue;
 var
-  pValue:       PStringRecord;
+  pValue:       PString;
 
 begin
   Result  := '';
   pValue  := inherited GetCurrentValue();
   if Assigned(pValue) then
-    Result  := pValue^.Value;
+    Result  := pValue^;
 end;
 
-
-procedure TX2UtStringBTree.DeleteNode;
-begin
-  Dispose(PStringRecord(ANode^.Value));
-
-  inherited;
-end;
 
 procedure TX2UtStringBTree.InitNode;
 begin
   inherited;
 
-  New(PStringRecord(ANode^.Value));
+  New(PString(ANode^.Value));
+end;
+
+procedure TX2UtStringBTree.DeleteNode;
+begin
+  Dispose(PString(ANode^.Value));
+
+  inherited;
 end;
 
 end.
