@@ -528,15 +528,27 @@ begin
           pBalance  := pCurrent;
 
         if AIndex > pCurrent^^.Index then
+        begin
           // Continue on the right side
-          pCurrent  := @pCurrent^^.Children[CRight]
-        else if AIndex < pCurrent^^.Index then
+          pCurrent  := @pCurrent^^.Children[CRight];
+
+          if ASetCursor then
+            FParents.Push(pCurrent^, CRight);
+        end else if AIndex < pCurrent^^.Index then
+        begin
           // Continue on the left side
-          pCurrent  := @pCurrent^^.Children[CLeft]
-        else
+          pCurrent  := @pCurrent^^.Children[CLeft];
+
+          if ASetCursor then
+            FParents.Push(pCurrent^, CLeft);
+        end else
         begin
           // Found it!
           Result    := pCurrent^;
+
+          if ASetCursor then
+            FCursor := Result;
+            
           break;
         end;
       end else if ACanCreate then
@@ -544,6 +556,7 @@ begin
         // Create new node
         InitNode(pCurrent^);
         pCurrent^^.Index  := AIndex;
+        Result            := pCurrent^;
 
         // Update balance factors
         pLast := pCurrent^;
@@ -566,7 +579,6 @@ begin
         if Assigned(pBalance) then
           BalanceInsert(pBalance^);
 
-        Result  := pCurrent^;
         break;
       end else
         break;
@@ -911,7 +923,7 @@ end;
 
 function TX2CustomBTree.Exists;
 begin
-  Result  := Assigned(LookupNode(AIndex, False, True));
+  Result  := Assigned(LookupNode(AIndex, False, ASetCursor));
 end;
 
 
@@ -937,12 +949,13 @@ procedure TX2CustomBTree.Reset;
 begin
   Cursor    := Root;
   IsReset   := True;
+  Parents.Clear();
 end;
 
 function TX2CustomBTree.Next;
 var
+  iDirection:     Integer;
   pParent:        PX2BTreeNode;
-  pCurrent:       PX2BTreeNode;
 
 begin
   Result  := False;
@@ -958,37 +971,35 @@ begin
     if Assigned(Cursor^.Children[CLeft]) then
     begin
       // Valid left path, follow it
-      Parents.Push(Cursor);
+      Parents.Push(Cursor, CLeft);
       Cursor  := Cursor^.Children[CLeft];
       Result  := True;
     end else if Assigned(Cursor^.Children[CRight]) then
     begin
       // Valid right path, follow it
-      Parents.Push(Cursor);
+      Parents.Push(Cursor, CRight);
       Cursor  := Cursor^.Children[CRight];
       Result  := True;
     end else
     begin
       // Neither is valid, traverse back up the parent stack until
-      // a node if found with a sibling
-      pCurrent  := Cursor;
-      pParent   := Parents.Pop();
+      // a node is found with a sibling
+      pParent     := Parents.Pop(iDirection);
       ClearCursor();
 
       while Assigned(pParent) do
       begin
-        if Assigned(pParent^.Children[CRight]) and
-           (pParent^.Children[CRight] <> pCurrent) then
+        if (iDirection = CLeft) and
+           Assigned(pParent^.Children[CRight]) then
         begin
           // Parent has a sibling, follow it
-          Parents.Push(pParent);
+          Parents.Push(pParent, CRight);
           Cursor  := pParent^.Children[CRight];
           Result  := True;
           break;
         end;
 
-        pCurrent  := pParent;
-        pParent   := Parents.Pop();
+        pParent   := Parents.Pop(iDirection);
       end;
     end;
   end else

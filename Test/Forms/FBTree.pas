@@ -12,14 +12,15 @@ uses
 type
   TfrmBTree = class(TForm)
     ocTree:           TdxOrgChart;
+
     procedure ocTreeDblClick(Sender: TObject);
   private
-    FTree:            TX2UtCustomBTree;
+    FTree:            TX2CustomBTree;
   protected
-    procedure BuildTree(const ARoot: PX2UtBTreeNode;
+    procedure BuildTree(const ARoot: PX2BTreeNode;
                         const AParent: TdxOcNode = nil);
   public
-    class procedure Execute(const ATree: TX2UtCustomBTree;
+    class procedure Execute(const ATree: TX2CustomBTree;
                             const AShowModal: Boolean = True);
   end;
 
@@ -30,7 +31,7 @@ uses
   TypInfo;
 
 type
-  THackBTree  = class(TX2UtCustomBTree);
+  THackBTree  = class(TX2CustomBTree);
 
 
 {$R *.dfm}
@@ -67,7 +68,7 @@ procedure TfrmBTree.BuildTree;
   end;
 
   function CreateNode(const AParent: TdxOcNode;
-                      const ANode: PX2UtBTreeNode): TdxOcNode;
+                      const ANode: PX2BTreeNode): TdxOcNode;
   begin
     Result      := CreateTextNode(AParent, IntToStr(ANode^.Index) + #13#10 +
                                   IntToStr(ANode^.Balance));
@@ -117,7 +118,7 @@ begin
 
   if Assigned(pNode) and Assigned(pNode.Data) then
   begin
-    FTree.Delete(PX2UtBTreeNode(pNode.Data)^.Index);
+    FTree.Delete(PX2BTreeNode(pNode.Data)^.Index);
     ocTree.Clear();
 
     BuildTree(THackBTree(FTree).Root);
