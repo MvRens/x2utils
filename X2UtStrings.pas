@@ -94,6 +94,22 @@ type
   *}
   function ChildPath(const AChild, AParent: String): Boolean;
 
+  {** Determines if one path is the child of another path.
+   *
+   * Matches the start of two normalized paths. Either of the path may contain
+   * parent-references (ex. 'some\..\..\path\'). Note that the file system is
+   * not actually accessed, all checks are performed on the strings only.
+   *
+   * The parameters are modified to return the expanded file names, stripped
+   * of any trailing path delimiter.
+   *
+   * @param AChild      the path to check
+   * @param AParent     the path which is supposed to be the parent
+   * @result            True if the child is indeed a child of the parent,
+   *                    False otherwise.
+  *}
+  function ChildPathEx(var AChild, AParent: String): Boolean;
+
 implementation
 uses
   SysUtils;
@@ -343,9 +359,16 @@ var
   sParent:      String;
 
 begin
-  sChild  := IncludeTrailingPathDelimiter(ExpandFileName(AChild));
-  sParent := IncludeTrailingPathDelimiter(ExpandFileName(AParent));
-  Result  := SameTextS(sChild, sParent);
+  sChild  := AChild;
+  sParent := AParent;
+  Result  := ChildPathEx(sChild, sParent);
+end;
+
+function ChildPathEx(var AChild, AParent: String): Boolean;
+begin
+  AChild  := ExcludeTrailingPathDelimiter(ExpandFileName(AChild));
+  AParent := ExcludeTrailingPathDelimiter(ExpandFileName(AParent));
+  Result  := SameTextS(AChild, AParent);
 end;
 
 end.
