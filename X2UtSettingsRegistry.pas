@@ -174,7 +174,9 @@ begin
       Result  := FData.ReadBool(AName)
     except
       Result  := ADefault;
-    end;
+    end
+  else
+    Result  := ADefault;
 end;
 
 function TX2RegistrySettings.ReadFloat;
@@ -184,7 +186,9 @@ begin
       Result  := FData.ReadFloat(AName)
     except
       Result  := ADefault;
-    end;
+    end
+  else
+    Result  := ADefault;
 end;
 
 function TX2RegistrySettings.ReadInteger;
@@ -194,7 +198,9 @@ begin
       Result  := FData.ReadInteger(AName)
     except
       Result  := ADefault;
-    end;
+    end
+  else
+    Result  := ADefault;
 end;
 
 function TX2RegistrySettings.ReadString;
@@ -204,7 +210,9 @@ begin
       Result  := FData.ReadString(AName)
     except
       Result  := ADefault;
-    end;
+    end
+  else
+    Result  := ADefault;
 end;
 
 
