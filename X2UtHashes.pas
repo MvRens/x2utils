@@ -166,12 +166,19 @@ type
   protected
     procedure FreeHashItem(var AItem: PX2HashItem); override;
   public
+    constructor Create(); overload; override;
+    constructor Create(AOwnsObjects: Boolean); reintroduce; overload;
+
     //:$ Gets or sets an item.
     property Items[Key: String]:        TObject read GetItem
                                                 write SetItem; default;
 
     //:$ Returns the value at the current cursor location.
     property CurrentValue:      TObject         read GetCurrentValue;
+
+    //:$ Determines if objects are destroyed when they are removed
+    property OwnsObjects:       Boolean         read FOwnsObjects
+                                                write FOwnsObjects;
   end;
 
 implementation
@@ -599,6 +606,21 @@ end;
 {========================== TX2ObjectHash
   Item Management
 ========================================}
+constructor TX2ObjectHash.Create();
+begin
+  inherited;
+
+  FOwnsObjects  := False;
+end;
+
+constructor TX2ObjectHash.Create(AOwnsObjects: Boolean);
+begin
+  inherited Create();
+
+  FOwnsObjects  := AOwnsObjects;
+end;
+
+
 function TX2ObjectHash.GetItem;
 begin
   Result  := TObject(inherited GetItem(Key));

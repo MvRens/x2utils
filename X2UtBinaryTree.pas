@@ -1134,7 +1134,7 @@ end;
 {========================= TX2ObjectBTree
   Item Management
 ========================================}
-constructor TX2ObjectBTree.Create;
+constructor TX2ObjectBTree.Create();
 begin
   inherited;
 
