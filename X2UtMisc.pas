@@ -59,6 +59,11 @@ interface
   //:: -1 when Value1 is less than Value2.
   function CompareInt(const AValue1, AValue2: Int64): Integer; overload;
 
+  //:$ Checks if the value is within the specified range
+  //:: Returns the Default parameter is the range is exceeded, otherwise
+  //:: the value is returned.
+  function InRange(const AValue, AMin, AMax, ADefault: Integer): Integer;
+
 implementation
 
 function iif(const AValue: Boolean; const AIfTrue, AIfFalse: Integer): Integer;
@@ -102,6 +107,14 @@ begin
     Result  := 1
   else if AValue1 < AValue2 then
     Result  := -1;
+end;
+
+function InRange;
+begin
+  Result  := ADefault;
+
+  if (AValue >= AMin) and (AValue <= AMax) then
+    Result  := AValue;
 end;
 
 end.
