@@ -376,7 +376,7 @@ begin
   AParent := ExcludeTrailingPathDelimiter(ExpandFileName(AParent));
   Result  := SameTextS(AChild, AParent) and
              ((not AFailIfSame) or
-              (Length(AChild) > Length(AParent));
+              (Length(AChild) > Length(AParent)));
 end;
 
 end.
