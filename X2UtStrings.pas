@@ -89,10 +89,12 @@ type
    *
    * @param AChild      the path to check
    * @param AParent     the path which is supposed to be the parent
+   * @param AFailIfSame if True, fails if the child path is the parent path
    * @result            True if the child is indeed a child of the parent,
    *                    False otherwise.
   *}
-  function ChildPath(const AChild, AParent: String): Boolean;
+  function ChildPath(const AChild, AParent: String;
+                     const AFailIfSame: Boolean = False): Boolean;
 
   {** Determines if one path is the child of another path.
    *
@@ -105,10 +107,12 @@ type
    *
    * @param AChild      the path to check
    * @param AParent     the path which is supposed to be the parent
+   * @param AFailIfSame if True, fails if the child path is the parent path
    * @result            True if the child is indeed a child of the parent,
    *                    False otherwise.
   *}
-  function ChildPathEx(var AChild, AParent: String): Boolean;
+  function ChildPathEx(var AChild, AParent: String;
+                       const AFailIfSame: Boolean = False): Boolean;
 
 implementation
 uses
@@ -353,7 +357,8 @@ begin
 end;
 
 
-function ChildPath(const AChild, AParent: String): Boolean;
+function ChildPath(const AChild, AParent: String;
+                   const AFailIfSame: Boolean): Boolean;
 var
   sChild:       String;
   sParent:      String;
@@ -361,14 +366,17 @@ var
 begin
   sChild  := AChild;
   sParent := AParent;
-  Result  := ChildPathEx(sChild, sParent);
+  Result  := ChildPathEx(sChild, sParent, AFailIfSame);
 end;
 
-function ChildPathEx(var AChild, AParent: String): Boolean;
+function ChildPathEx(var AChild, AParent: String;
+                     const AFailIfSame: Boolean): Boolean;
 begin
   AChild  := ExcludeTrailingPathDelimiter(ExpandFileName(AChild));
   AParent := ExcludeTrailingPathDelimiter(ExpandFileName(AParent));
-  Result  := SameTextS(AChild, AParent);
+  Result  := SameTextS(AChild, AParent) and
+             ((not AFailIfSame) or
+              (Length(AChild) > Length(AParent));
 end;
 
 end.
