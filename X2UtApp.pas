@@ -59,15 +59,44 @@ type
     constructor Create();
     destructor Destroy(); override;
   published
+    //:$ Contains the Company Name as specified in the version information
+    //:! Default to an empty string if no version information is available
     property CompanyName:       String index 0  read GetValue write SetValue;
+
+    //:$ Contains the File Description as specified in the version information
+    //:! Default to an empty string if no version information is available
     property FileDescription:   String index 1  read GetValue write SetValue;
+
+    //:$ Contains the File Version as specified in the version information
+    //:! Default to an empty string if no version information is available
     property FileVersion:       String index 2  read GetValue write SetValue;
+
+    //:$ Contains the Internal Name as specified in the version information
+    //:! Default to an empty string if no version information is available
     property InternalName:      String index 3  read GetValue write SetValue;
+
+    //:$ Contains the Legal Copyright as specified in the version information
+    //:! Default to an empty string if no version information is available
     property LegalCopyright:    String index 4  read GetValue write SetValue;
+
+    //:$ Contains the Legal Trademark as specified in the version information
+    //:! Default to an empty string if no version information is available
     property LegalTrademark:    String index 5  read GetValue write SetValue;
+
+    //:$ Contains the Original Filename as specified in the version information
+    //:! Default to an empty string if no version information is available
     property OriginalFilename:  String index 6  read GetValue write SetValue;
+
+    //:$ Contains the Product Name as specified in the version information
+    //:! Default to an empty string if no version information is available
     property ProductName:       String index 7  read GetValue write SetValue;
+
+    //:$ Contains the Product Version as specified in the version information
+    //:! Default to an empty string if no version information is available
     property ProductVersion:    String index 8  read GetValue write SetValue;
+
+    //:$ Contains the Comments as specified in the version information
+    //:! Default to an empty string if no version information is available
     property Comments:          String index 9  read GetValue write SetValue;
   end;
 
@@ -85,10 +114,23 @@ type
     constructor Create();
     destructor Destroy(); override;
 
+    //:$ Contains the application's Major version
+    //:! Defaults to 0 if no version information is available
     property Major:           Integer               read FMajor     write FMajor;
+
+    //:$ Contains the application's Minor version
+    //:! Defaults to 0 if no version information is available
     property Minor:           Integer               read FMinor     write FMinor;
+
+    //:$ Contains the application's Release number
+    //:! Defaults to 0 if no version information is available
     property Release:         Integer               read FRelease   write FRelease;
+
+    //:$ Contains the application's Build number
+    //:! Defaults to 0 if no version information is available
     property Build:           Integer               read FBuild     write FBuild;
+
+    //:$ Contains extended version information
     property Strings:         TX2AppVersionStrings  read FStrings;
   end;
 
@@ -104,9 +146,18 @@ type
     constructor Create();
     destructor Destroy(); override;
 
+    //:$ Returns the formatted version information
+    //:: If Build is False, the return value will not include the
+    //:: application's Build number.
     function FormatVersion(Build: Boolean = True): String;
 
+    //:$ Contains the path to the application's executable
+    //:! This path in unaffected by the working directory which may be
+    //:! specified in the shortcut launching the application. A trailing
+    //:! slash is included in the path.
     property Path:      String          read FPath;
+
+    //:$ Contains the application's version information
     property Version:   TX2AppVersion   read FVersion;
   end;
 
@@ -123,6 +174,8 @@ const
 
 var
   GApp:       TX2App;
+
+{$I X2UtCompilerVersion.inc}
   
 
 {========================================
@@ -229,7 +282,11 @@ end;
 
 procedure TX2App.GetPath;
 begin
-  FPath   := ExcludeTrailingPathDelimiter(ExtractFilePath(GetModule()));
+  {$IFDEF D6}
+  FPath   := IncludeTrailingPathDelimiter(ExtractFilePath(GetModule()));
+  {$ELSE}
+  FPath   := IncludeTrailingBackslash(ExtractFilePath(GetModule()));
+  {$ENDIF}
 end;
 
 
@@ -279,7 +336,7 @@ begin
     Release := 0;
     Build   := 0;
   end;
-  
+
   pFile := PChar(GetModule());
   dSize := GetFileVersionInfoSize(pFile, dTemp);
 
