@@ -1,42 +1,84 @@
-{
-  :: X2UtStrings provides various string-related functions.
-  ::
-  :: Last changed:    $Date$
-  :: Revision:        $Rev$
-  :: Author:          $Author$
-}
+{** Provides various string-related functions.
+ *
+ * Last changed:  $Date$ <br />
+ * Revision:      $Rev$ <br />
+ * Author:        $Author$ <br />
+*}
 unit X2UtStrings;
 
 interface
 type
+  //** Array of string values.
   TSplitArray = array of String;
-  
-  //:$ Formats the specified size
-  //:: If KeepBytes is true, the size will be formatted for decimal separators
-  //:: and 'bytes' will be appended. If KeepBytes is false the best suitable
-  //:: unit will be chosen (KB, MB, GB).
-  function FormatSize(const Bytes: Int64; KeepBytes: Boolean = False): String;
 
-  //:$ Compares two strings by ordinal value without case sensitivity up to
-  //:$ ALength characters.
+  {** Formats the specified size.
+   *
+   * @param ABytes      the size to format in bytes.
+   * @param AKeepBytes  if true, only decimal separators will be added and
+   *                    the text 'bytes' appended. If False, a suitable unit
+   *                    will be chosen (KB, MB, GB).
+   * @result            the formatted size.
+  *}
+  function FormatSize(const ABytes: Int64; AKeepBytes: Boolean = False): String;
+
+  {** Compares two strings without case sensitivity.
+   *
+   * @param AMatch      the string to match.
+   * @param AAgainst    the string to match against.
+   * @param ALength     the maximum length to compare.
+   * @result            -1 if AMatch is lower by ordinal value than AAgainst,
+   *                    0 if the two are equal, 1 if AMatch is higher.
+  *}
   function CompareTextL(const AMatch, AAgainst: String;
                         const ALength: Integer): Integer;
 
-  //:$ Compares two strings by ordinal value without case sensitivity up to
-  //:$ ALength characters.
+  {** Compares two strings without case sensitivity.
+   *
+   * @param AMatch      the string to match.
+   * @param AAgainst    the string to match against.
+   * @param ALength     the maximum length to compare.
+   * @result            True if the comparison is a match, False otherwise.
+  *}
   function SameTextL(const AMatch, AAgainst: String;
                      const ALength: Integer): Boolean;
 
-  //:$ Compares AMatch against AAgainst using AAgainst's length.
+  {** Compares two strings without case sensitivity.
+   *
+   * The length of AAgainst is used as the maximum length to check.
+   *
+   * @param AMatch      the string to match
+   * @param AAgainst    the string to match against
+   * @result            -1 if AMatch is lower by ordinal value than AAgainst,
+   *                    0 if the two are equal, 1 if AMatch is higher.
+  *}
   function CompareTextS(const AMatch, AAgainst: String): Integer;
 
-  //:$ Compares AMatch against AAgainst using AAgainst's length.
+  {** Compares two strings without case sensitivity.
+   *
+   * The length of AAgainst is used as the maximum length to check.
+   *
+   * @param AMatch      the string to match.
+   * @param AAgainst    the string to match against.
+   * @result            True if the comparison is a match, False otherwise.
+  *}
   function SameTextS(const AMatch, AAgainst: String): Boolean;
 
-  //:$ Splits a string on the specified delimiter
+  {** Splits a string on a specified delimiter.
+   *
+   * @param ASource     the source string.
+   * @param ADelimiter  the delimiter to split on.
+   * @param ADest       the array which will receive the split parts.
+   * @todo              though optimized, it now fails on #0 characters, need
+   *                    to determine the end by checking the AnsiString length.
+  *}
   procedure Split(const ASource, ADelimiter: String; out ADest: TSplitArray);
 
-  //:$ Appends the strings with the specified glue string
+  {** Appends string parts with a specified glue value
+   *
+   * @param ASource     the source parts
+   * @param AGlue       the string added between the parts
+   * @result            the composed parts
+  *}
   function Join(const ASource: TSplitArray; const AGlue: String): String;
 
 implementation
@@ -55,20 +97,20 @@ var
 
 begin
   sExt  := ' bytes';
-  dSize := Bytes;
+  dSize := ABytes;
 
-  if (not KeepBytes) and (Bytes >= KB) then
-    if (Bytes >= KB) and (Bytes < MB) then begin
+  if (not AKeepBytes) and (ABytes >= KB) then
+    if (ABytes >= KB) and (ABytes < MB) then begin
       // 1 kB ~ 1 MB
-      dSize := Bytes / KB;
+      dSize := ABytes / KB;
       sExt  := ' KB';
-    end else if (Bytes >= MB) and (Bytes < GB) then begin
+    end else if (ABytes >= MB) and (ABytes < GB) then begin
       // 1 MB ~ 1 GB
-      dSize := Bytes / MB;
+      dSize := ABytes / MB;
       sExt  := ' MB';
     end else begin
       // 1 GB ~ x
-      dSize := Bytes / GB;
+      dSize := ABytes / GB;
       sExt  := ' GB';
     end;
 

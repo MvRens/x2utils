@@ -1,12 +1,14 @@
-{
-  :: X2UtApp provides a singleton App object to access properties associated
-  :: with the application, such as the version number or executable path.
-  :: It is part of the X2Utils suite.
-  ::
-  :: Last changed:    $Date$
-  :: Revision:        $Rev$
-  :: Author:          $Author$
-}
+{** Provides application related information
+ *
+ * Provides a singleton App object to access properties associated
+ * with the application, such as the version number or executable path.
+ * It is part of the X2Utils suite.
+ * <br /><br />
+ *
+ * Last changed:  $Date$ <br />
+ * Revision:      $Rev$ <br />
+ * Author:        $Author$ <br />
+*}
 unit X2UtApp;
 
 interface
