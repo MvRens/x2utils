@@ -28,16 +28,31 @@ type
   //:$ Raised when the specified range is invalid.
   EX2SettingsRange      = class(Exception);
 
+  //:$ Raised when the specified define already exists
+  EX2SettingsExists     = class(Exception);
+
   //:$ Callback method for defines
   TX2SettingsCallback   = procedure(const ASection, AName: String;
                                     var AValue: Variant) of object;
 
   {
-    :$ Internal representation of defines
+    :$ Internal representation of a persistent setting
   }
+  TX2SettingsRanges     = array of array[0..1] of Variant;
+
   TX2SettingsDefine     = class(TObject)
   private
+    FCallback:      TX2SettingsCallback;
+    FRanges:        TX2SettingsRanges;
+    FValue:         Variant;
+  public
+    constructor Create(const AValue: Variant;
+                       const ARanges: array of const;
+                       const ACallback: TX2SettingsCallback);
 
+    property Callback:  TX2SettingsCallback read FCallback;
+    property Ranges:    TX2SettingsRanges   read FRanges;
+    property Value:     Variant             read FValue;
   end;
 
 
@@ -128,9 +143,14 @@ type
     :: create to provide application-wide access to the same settings.
   }
   TX2SettingsFactory    = class(TObject)
+  private
+    FDefines:         TX2ObjectHash;
   protected
     function GetSection(const ASection: String): TX2Settings; virtual; abstract;
   public
+    constructor Create();
+    destructor Destroy(); override;
+
     //:$ Loads a section from the settings.
     //:: Sub-sections are indicated by seperating the sections with a dot ('.')
     //:: characters, ex: Sub.Section. The underlying extension will translate
@@ -161,9 +181,10 @@ type
 
 implementation
 resourcestring
-  RSInvalidRange  = 'Invalid range';
-  RSInvalidType   = 'Invalid type';
-  RSUndefined     = 'Undefined setting: %s';
+  RSInvalidRange  = 'Invalid range!';
+  RSInvalidType   = 'Invalid type!';
+  RSUndefined     = 'Undefined setting: %s!';
+  RSDefineExists  = 'Define already exists!';
 
 
 {============================ TX2Settings
@@ -236,9 +257,131 @@ end;
 {===================== TX2SettingsFactory
   Defines
 ========================================}
-procedure TX2SettingsFactory.Define;
+constructor TX2SettingsFactory.Create;
 begin
-  //
+  inherited;
+
+  FDefines  := TX2ObjectHash.Create();
+end;
+
+destructor TX2SettingsFactory.Destroy;
+begin
+  FreeAndNil(FDefines);
+
+  inherited;
+end;
+
+
+procedure TX2SettingsFactory.Define;
+  function CheckVarType(const AValue: Variant): TVarType;
+  begin
+    case VarType(AValue) of
+      varBoolean:     break;
+      varByte,
+      varSmallint,
+      varInteger,
+      varWord,
+      varLongWord:    Result  := varInteger;
+      varSingle,
+      varDouble,
+      varDate:        Result  := varDouble;
+      varOleStr,
+      varStrArg,
+      varString:      Result  := varString;
+    else
+      raise EX2SettingsType.Create(RSInvalidType);
+    end;
+  end;
+
+var
+  iIndex:         Integer;
+  sHash:          String;
+  vtValue:        TVarType;
+
+begin
+  sHash := ASection + #0 + AName;
+  if FDefines.Exists(sHash) then
+    raise EX2SettingsExists.Create(RSDefineExists);
+
+  // Validate type
+  vtValue         := CheckVarType(AValue);
+
+  // Validate ranges
+  if High(ARanges) mod 2 <> 0 then
+    raise EX2SettingsRange.Create(RSInvalidRange);
+
+  for iIndex  := 0 to High(ARanges) do
+    case ARanges[iIndex].VType of
+      vtBoolean:
+        if vtValue <> varBoolean then
+          raise EX2SettingsType.Create(RSInvalidType);
+      vtInteger:
+        if not (vtValue in [varInteger, varDouble]) then
+          raise EX2SettingsType.Create(RSInvalidType);
+      vtExtended:
+        if vtValue <> varDouble then
+          raise EX2SettingsType.Create(RSInvalidType);
+      vtString,
+      vtPChar,
+      vtChar,
+      vtWideChar,
+      vtPWideChar,
+      vtWideString,
+      vtAnsiString:
+        if vtValue <> varString then
+          raise EX2SettingsType.Create(RSInvalidType);
+      vtVariant:
+        if vtValue <> CheckVarType(ARanges[iIndex].VVariant^) then
+          raise EX2SettingsType.Create(RSInvalidType);
+    end;
+
+  FDefines[sHash] := TX2SettingsDefine.Create(VarAsType(AValue, vtValue),
+                                              ARanges, ACallback);
+end;
+
+
+{====================== TX2SettingsDefine
+  Initialization
+========================================}
+constructor TX2SettingsDefine.Create;
+  function VarRecToVariant(const AVarRec: TVarRec): Variant;
+  begin
+    case AVarRec.VType of
+      vtBoolean:    Result  := AVarRec.VBoolean;
+      vtInteger:    Result  := AVarRec.VInteger;
+      vtExtended:   Result  := VarAsType(AVarRec.VExtended^, varDouble);
+      vtString:     Result  := AVarRec.VString^;
+      vtPChar:      Result  := String(AVarRec.VPChar);
+      vtPWideChar:  Result  := String(AVarRec.VPWideChar^);
+      vtWideChar:   Result  := String(AVarRec.VWideChar);
+      vtWideString: Result  := String(AVarRec.VWideString^);
+      vtAnsiString: Result  := String(AVarRec.VAnsiString^);
+      vtVariant:    Result  := AVarRec.VVariant^;
+    end;
+  end;
+
+var
+  iCount:         Integer;
+  iIndex:         Integer;
+  iRange:         Integer;
+
+begin
+  FValue    := AValue;
+  FCallback := ACallback;
+
+  // Copy ranges
+  iCount    := (High(ARanges) + 1) div 2;
+  iIndex    := 0;
+
+  SetLength(FRanges, iCount);
+
+  for iRange  := 0 to iCount - 1 do
+  begin
+    FRanges[iRange][0]  := VarRecToVariant(ARanges[iIndex]);
+    FRanges[iRange][1]  := VarRecToVariant(ARanges[iIndex + 1]);
+
+    Inc(iIndex, 2);
+  end;
 end;
 
 end.
