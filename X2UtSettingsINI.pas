@@ -101,6 +101,10 @@ end;
 ========================================}
 function TX2INISettings.InternalReadBool;
 begin
+  Result  := inherited InternalReadBool(AName, AValue);
+  if Result then
+    exit;
+
   Result  := ValueExists(AName);
 
   if Result then
@@ -109,6 +113,10 @@ end;
 
 function TX2INISettings.InternalReadFloat;
 begin
+  Result  := inherited InternalReadFloat(AName, AValue);
+  if Result then
+    exit;
+
   Result  := ValueExists(AName);
 
   if Result then
@@ -117,6 +125,10 @@ end;
 
 function TX2INISettings.InternalReadInteger;
 begin
+  Result  := inherited InternalReadInteger(AName, AValue);
+  if Result then
+    exit;
+
   Result  := ValueExists(AName);
 
   if Result then
@@ -125,6 +137,10 @@ end;
 
 function TX2INISettings.InternalReadString;
 begin
+  Result  := inherited InternalReadString(AName, AValue);
+  if Result then
+    exit;
+
   Result  := ValueExists(AName);
 
   if Result then
@@ -137,21 +153,25 @@ end;
 ========================================}
 procedure TX2INISettings.InternalWriteBool;
 begin
+  inherited;
   FData.WriteBool(FSection, AName, AValue);
 end;
 
 procedure TX2INISettings.InternalWriteFloat;
 begin
+  inherited;
   FData.WriteFloat(FSection, AName, AValue);
 end;
 
 procedure TX2INISettings.InternalWriteInteger;
 begin
+  inherited;
   FData.WriteInteger(FSection, AName, AValue);
 end;
 
 procedure TX2INISettings.InternalWriteString;
 begin
+  inherited;
   FData.WriteString(FSection, AName, AValue);
 end;
 

@@ -143,7 +143,9 @@ end;
 ========================================}
 function TX2RegistrySettings.InternalReadBool;
 begin
-  Result  := False;
+  Result  := inherited InternalReadBool(AName, AValue);
+  if Result then
+    exit;
 
   if OpenRead() then
   begin
@@ -156,7 +158,9 @@ end;
 
 function TX2RegistrySettings.InternalReadFloat;
 begin
-  Result  := False;
+  Result  := inherited InternalReadFloat(AName, AValue);
+  if Result then
+    exit;
 
   if OpenRead() then
   begin
@@ -169,7 +173,9 @@ end;
 
 function TX2RegistrySettings.InternalReadInteger;
 begin
-  Result  := False;
+  Result  := inherited InternalReadInteger(AName, AValue);
+  if Result then
+    exit;
 
   if OpenRead() then
   begin
@@ -182,7 +188,9 @@ end;
 
 function TX2RegistrySettings.InternalReadString;
 begin
-  Result  := False;
+  Result  := inherited InternalReadString(AName, AValue);
+  if Result then
+    exit;
 
   if OpenRead() then
   begin
@@ -199,24 +207,28 @@ end;
 ========================================}
 procedure TX2RegistrySettings.InternalWriteBool;
 begin
+  inherited;
   if OpenWrite() then
     FData.WriteBool(AName, AValue);
 end;
 
 procedure TX2RegistrySettings.InternalWriteFloat;
 begin
+  inherited;
   if OpenWrite() then
     FData.WriteFloat(AName, AValue);
 end;
 
 procedure TX2RegistrySettings.InternalWriteInteger;
 begin
+  inherited;
   if OpenWrite() then
     FData.WriteInteger(AName, AValue);
 end;
 
 procedure TX2RegistrySettings.InternalWriteString;
 begin
+  inherited;
   if OpenWrite() then
     FData.WriteString(AName, AValue);
 end;

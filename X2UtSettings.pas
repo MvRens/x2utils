@@ -42,18 +42,22 @@ type
   }
   TX2SettingsDefine     = class(TObject)
   private
-    FCallback:      TX2SettingsCallback;
-    FValue:         Variant;
+    FCached:            Boolean;
+    FCallback:          TX2SettingsCallback;
+    FDefaultValue:      Variant;
+    FValue:             Variant;
   public
     constructor Create(const AValue: Variant;
                        const ACallback: TX2SettingsCallback);
 
     procedure Action(const AAction: TX2SettingsAction;
                      const ASection, AName: String;
-                     var AValue: Variant); 
+                     var AValue: Variant);
 
-    property Callback:  TX2SettingsCallback read FCallback;
-    property Value:     Variant             read FValue;
+    property Cached:        Boolean             read FCached        write FCached;
+    property Callback:      TX2SettingsCallback read FCallback;
+    property DefaultValue:  Variant             read FDefaultValue;
+    property Value:         Variant             read FValue         write FValue;
   end;
 
 
@@ -69,16 +73,20 @@ type
   private
     FFactory:         TX2SettingsFactory;
     FSection:         String;
-  protected
-    function InternalReadBool(const AName: String; out AValue: Boolean): Boolean; virtual; abstract;
-    function InternalReadFloat(const AName: String; out AValue: Double): Boolean; virtual; abstract;
-    function InternalReadInteger(const AName: String; out AValue: Integer): Boolean; virtual; abstract;
-    function InternalReadString(const AName: String; out AValue: String): Boolean; virtual; abstract;
 
-    procedure InternalWriteBool(const AName: String; AValue: Boolean); virtual; abstract;
-    procedure InternalWriteFloat(const AName: String; AValue: Double); virtual; abstract;
-    procedure InternalWriteInteger(const AName: String; AValue: Integer); virtual; abstract;
-    procedure InternalWriteString(const AName, AValue: String); virtual; abstract;
+    function ReadCache(const AName: String; out AValue: Variant): Boolean;
+    procedure WriteCache(const AName: String; const AValue: Variant); overload;
+    procedure WriteCache(const ADefine: TX2SettingsDefine; const AValue: Variant); overload;
+  protected
+    function InternalReadBool(const AName: String; out AValue: Boolean): Boolean; virtual;
+    function InternalReadFloat(const AName: String; out AValue: Double): Boolean; virtual;
+    function InternalReadInteger(const AName: String; out AValue: Integer): Boolean; virtual;
+    function InternalReadString(const AName: String; out AValue: String): Boolean; virtual;
+
+    procedure InternalWriteBool(const AName: String; AValue: Boolean); virtual;
+    procedure InternalWriteFloat(const AName: String; AValue: Double); virtual;
+    procedure InternalWriteInteger(const AName: String; AValue: Integer); virtual;
+    procedure InternalWriteString(const AName, AValue: String); virtual;
 
     property Factory:         TX2SettingsFactory  read FFactory;
     property Section:         String              read FSection;
@@ -202,6 +210,51 @@ end;
 {============================ TX2Settings
   Reading
 ========================================}
+function TX2Settings.InternalReadBool(const AName: String;
+                                      out AValue: Boolean): Boolean;
+var
+  vValue:     Variant;
+
+begin
+  Result  := ReadCache(AName, vValue);
+  if Result then
+    AValue  := vValue;
+end;
+
+function TX2Settings.InternalReadFloat(const AName: String;
+                                       out AValue: Double): Boolean;
+var
+  vValue:     Variant;
+
+begin
+  Result  := ReadCache(AName, vValue);
+  if Result then
+    AValue  := vValue;
+end;
+
+function TX2Settings.InternalReadInteger(const AName: String;
+                                         out AValue: Integer): Boolean;
+var
+  vValue:     Variant;
+
+begin
+  Result  := ReadCache(AName, vValue);
+  if Result then
+    AValue  := vValue;
+end;
+
+function TX2Settings.InternalReadString(const AName: String;
+                                        out AValue: String): Boolean;
+var
+  vValue:     Variant;
+
+begin
+  Result  := ReadCache(AName, vValue);
+  if Result then
+    AValue  := vValue;
+end;
+
+
 function TX2Settings.ReadBool(const AName: String): Boolean;
 var
   pDefine:      TX2SettingsDefine;
@@ -212,7 +265,7 @@ begin
 
   if not InternalReadBool(AName, Result) then
     if Assigned(pDefine) then
-      Result  := pDefine.Value
+      Result  := pDefine.DefaultValue
     else
       raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
 
@@ -221,6 +274,7 @@ begin
     vValue  := Result;
     pDefine.Action(saRead, FSection, AName, vValue);
     Result  := vValue;
+    WriteCache(pDefine, Result);
   end;
 end;
 
@@ -240,6 +294,7 @@ begin
     vValue  := Result;
     pDefine.Action(saRead, FSection, AName, vValue);
     Result  := vValue;
+    WriteCache(pDefine, Result);
   end;
 end;
 
@@ -253,7 +308,7 @@ begin
 
   if not InternalReadFloat(AName, Result) then
     if Assigned(pDefine) then
-      Result  := pDefine.Value
+      Result  := pDefine.DefaultValue
     else
       raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
 
@@ -262,6 +317,7 @@ begin
     vValue  := Result;
     pDefine.Action(saRead, FSection, AName, vValue);
     Result  := vValue;
+    WriteCache(pDefine, Result);
   end;
 end;
 
@@ -281,6 +337,7 @@ begin
     vValue  := Result;
     pDefine.Action(saRead, FSection, AName, vValue);
     Result  := vValue;
+    WriteCache(pDefine, Result);
   end;
 end;
 
@@ -294,7 +351,7 @@ begin
 
   if not InternalReadInteger(AName, Result) then
     if Assigned(pDefine) then
-      Result  := pDefine.Value
+      Result  := pDefine.DefaultValue
     else
       raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
 
@@ -303,6 +360,7 @@ begin
     vValue  := Result;
     pDefine.Action(saRead, FSection, AName, vValue);
     Result  := vValue;
+    WriteCache(pDefine, Result);
   end;
 end;
 
@@ -322,6 +380,7 @@ begin
     vValue  := Result;
     pDefine.Action(saRead, FSection, AName, vValue);
     Result  := vValue;
+    WriteCache(pDefine, Result);
   end;
 end;
 
@@ -335,7 +394,7 @@ begin
 
   if not InternalReadString(AName, Result) then
     if Assigned(pDefine) then
-      Result  := pDefine.Value
+      Result  := pDefine.DefaultValue
     else
       raise EX2SettingsUndefined.CreateFmt(RSUndefined, [AName]);
 
@@ -344,6 +403,7 @@ begin
     vValue  := Result;
     pDefine.Action(saRead, FSection, AName, vValue);
     Result  := vValue;
+    WriteCache(pDefine, Result);
   end;
 end;
 
@@ -362,6 +422,7 @@ begin
     vValue  := Result;
     pDefine.Action(saRead, FSection, AName, vValue);
     Result  := vValue;
+    WriteCache(pDefine, Result);
   end;
 end;
 
@@ -369,6 +430,28 @@ end;
 {============================ TX2Settings
   Writing
 ========================================}
+procedure TX2Settings.InternalWriteBool(const AName: String; AValue: Boolean);
+begin
+  WriteCache(AName, AValue);
+end;
+
+procedure TX2Settings.InternalWriteFloat(const AName: String; AValue: Double);
+begin
+  WriteCache(AName, AValue);
+end;
+
+procedure TX2Settings.InternalWriteInteger(const AName: String;
+                                           AValue: Integer);
+begin
+  WriteCache(AName, AValue);
+end;
+
+procedure TX2Settings.InternalWriteString(const AName, AValue: String);
+begin
+  WriteCache(AName, AValue);
+end;
+
+
 procedure TX2Settings.WriteBool;
 var
   pDefine:      TX2SettingsDefine;
@@ -442,6 +525,41 @@ begin
 end;
 
 
+
+function TX2Settings.ReadCache(const AName: String;
+                               out AValue: Variant): Boolean;
+var
+  pDefine:      TX2SettingsDefine;
+
+begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+  Result  := Assigned(pDefine) and pDefine.Cached;
+  if Result then
+    AValue  := pDefine.Value;
+end;
+
+procedure TX2Settings.WriteCache(const AName: String;
+                                 const AValue: Variant);
+var
+  pDefine:      TX2SettingsDefine;
+
+begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+  begin
+    pDefine.Cached  := True;
+    pDefine.Value   := AValue;
+  end;
+end;
+
+procedure TX2Settings.WriteCache(const ADefine: TX2SettingsDefine;
+                                 const AValue: Variant);
+begin
+  ADefine.Cached  := True;
+  ADefine.Value   := AValue;
+end;
+
+
 {===================== TX2SettingsFactory
   Defines
 ========================================}
@@ -506,13 +624,17 @@ end;
 {====================== TX2SettingsDefine
   Initialization
 ========================================}
-constructor TX2SettingsDefine.Create;
+constructor TX2SettingsDefine.Create(const AValue: Variant;
+                                     const ACallback: TX2SettingsCallback);
 begin
-  FValue    := AValue;
-  FCallback := ACallback;
+  FCached       := False;
+  FCallback     := ACallback;
+  FDefaultValue := AValue;
 end;
 
-procedure TX2SettingsDefine.Action;
+procedure TX2SettingsDefine.Action(const AAction: TX2SettingsAction;
+                                   const ASection, AName: String;
+                                   var AValue: Variant);
 begin
   if Assigned(FCallback) then
     FCallback(AAction, ASection, AName, AValue);
