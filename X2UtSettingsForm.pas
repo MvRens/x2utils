@@ -30,7 +30,7 @@ begin
       AForm.WindowState := wsMaximized
     else with THackCustomForm(AForm) do begin
       WindowState       := wsNormal;
-      Position          := poDesigned;
+      Position          := poDefaultPosOnly;
       Left              := ReadInteger('Left', Left);
       Top               := ReadInteger('Top', Top);
       Width             := ReadInteger('Width', Width);
