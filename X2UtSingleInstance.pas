@@ -339,7 +339,6 @@ end;
 function ParamStrEx;
 var
   pCmdLine:       PChar;
-  cBuffer:        array[0..260] of Char;
 
 begin
   Result    := '';
