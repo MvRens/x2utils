@@ -59,13 +59,12 @@ type
 
     function OpenRead(): Boolean;
     function OpenWrite(): Boolean;
+  protected
+    function InternalReadBool(const AName: String; out AValue: Boolean): Boolean; override;
+    function InternalReadFloat(const AName: String; out AValue: Double): Boolean; override;
+    function InternalReadInteger(const AName: String; out AValue: Integer): Boolean; override;
+    function InternalReadString(const AName: String; out AValue: String): Boolean; override;
   public
-    // IX2Settings implementation
-    function ReadBool(const AName: String; const ADefault: Boolean = False): Boolean; override;
-    function ReadFloat(const AName: String; const ADefault: Double = 0.0): Double; override;
-    function ReadInteger(const AName: String; const ADefault: Integer = 0): Integer; override;
-    function ReadString(const AName: String; const ADefault: String = ''): String; override;
-
     procedure WriteBool(const AName: String; AValue: Boolean); override;
     procedure WriteFloat(const AName: String; AValue: Double); override;
     procedure WriteInteger(const AName: String; AValue: Integer); override;
@@ -79,7 +78,9 @@ type
     procedure DeleteSection(); override;
     procedure DeleteValue(const AName: String); override;
   public
-    constructor Create(const ARoot: Cardinal; const AKey: String);
+    constructor CreateInit(const AFactory: TX2SettingsFactory;
+                           const ASection: String;
+                           const ARoot: Cardinal);
     destructor Destroy(); override;
   end;
 
@@ -110,26 +111,23 @@ uses
   Section
 ========================================}
 function TX2RegistrySettingsFactory.GetSection;
-var
-  sKey:       String;
-
 begin
-  sKey    := IncludeTrailingPathDelimiter(FKey) +
-             StringReplace(ASection, '.', '\', [rfReplaceAll]);
-  Result  := TX2RegistrySettings.Create(FRoot, sKey);
+  Result  := TX2RegistrySettings.CreateInit(Self, ASection, FRoot);
 end;
 
 
 {==================== TX2RegistrySettings
   Initialization
 ========================================}
-constructor TX2RegistrySettings.Create;
+constructor TX2RegistrySettings.CreateInit;
 begin
-  inherited Create();
+  inherited Create(AFactory, ASection);
 
   FData         := TRegistry.Create();
   FData.RootKey := ARoot;
-  FKey          := AKey;
+
+  FKey          := IncludeTrailingPathDelimiter(FKey) +
+                      StringReplace(ASection, '.', '\', [rfReplaceAll]);
 end;
 
 destructor TX2RegistrySettings.Destroy;
@@ -169,50 +167,48 @@ end;
 {==================== TX2RegistrySettings
   Read
 ========================================}
-function TX2RegistrySettings.ReadBool;
+function TX2RegistrySettings.InternalReadBool;
 begin
-  Result  := ADefault;
+  Result  := False;
 
-  if (OpenRead()) and (FData.ValueExists(AName)) then
-    try
-      Result  := FData.ReadBool(AName)
-    except
-      // Silently ignore exceptions so the
-      // default value gets returned
-    end;
+  if OpenRead() then
+  begin
+    AValue  := FData.ReadBool(AName);
+    Result  := True;
+  end;
 end;
 
-function TX2RegistrySettings.ReadFloat;
+function TX2RegistrySettings.InternalReadFloat;
 begin
-  Result  := ADefault;
+  Result  := False;
 
-  if (OpenRead()) and (FData.ValueExists(AName)) then
-    try
-      Result  := FData.ReadFloat(AName)
-    except
-    end;
+  if OpenRead() then
+  begin
+    AValue  := FData.ReadFloat(AName);
+    Result  := True;
+  end;
 end;
 
-function TX2RegistrySettings.ReadInteger;
+function TX2RegistrySettings.InternalReadInteger;
 begin
-  Result  := ADefault;
+  Result  := False;
 
-  if (OpenRead()) and (FData.ValueExists(AName)) then
-    try
-      Result  := FData.ReadInteger(AName)
-    except
-    end;
+  if OpenRead() then
+  begin
+    AValue  := FData.ReadInteger(AName);
+    Result  := True;
+  end;
 end;
 
-function TX2RegistrySettings.ReadString;
+function TX2RegistrySettings.InternalReadString;
 begin
-  Result  := ADefault;
+  Result  := False;
 
-  if (OpenRead()) and (FData.ValueExists(AName)) then
-    try
-      Result  := FData.ReadString(AName)
-    except
-    end;
+  if OpenRead() then
+  begin
+    AValue  := FData.ReadString(AName);
+    Result  := True;
+  end;
 end;
 
 

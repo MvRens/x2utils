@@ -1,38 +1,9 @@
 {
   :: X2UtSettingsINI extends X2UtSettings with INI reading/writing.
   ::
-  :: Subversion repository available at:
-  ::   $URL$
-  ::
   :: Last changed:    $Date$
   :: Revision:        $Rev$
   :: Author:          $Author$
-
-  :$
-  :$
-  :$ X2Utils is released under the zlib/libpng OSI-approved license.
-  :$ For more information: http://www.opensource.org/
-  :$ /n/n
-  :$ /n/n
-  :$ Copyright (c) 2003 X2Software
-  :$ /n/n
-  :$ This software is provided 'as-is', without any express or implied warranty.
-  :$ In no event will the authors be held liable for any damages arising from
-  :$ the use of this software.
-  :$ /n/n
-  :$ Permission is granted to anyone to use this software for any purpose,
-  :$ including commercial applications, and to alter it and redistribute it
-  :$ freely, subject to the following restrictions:
-  :$ /n/n
-  :$ 1. The origin of this software must not be misrepresented; you must not
-  :$ claim that you wrote the original software. If you use this software in a
-  :$ product, an acknowledgment in the product documentation would be
-  :$ appreciated but is not required.
-  :$ /n/n
-  :$ 2. Altered source versions must be plainly marked as such, and must not be
-  :$ misrepresented as being the original software.
-  :$ /n/n
-  :$ 3. This notice may not be removed or altered from any source distribution.
 }
 unit X2UtSettingsINI;
 
@@ -53,13 +24,12 @@ type
   private
     FData:        TMemIniFile;
     FSection:     String;
+  protected
+    function InternalReadBool(const AName: String; out AValue: Boolean): Boolean; override;
+    function InternalReadFloat(const AName: String; out AValue: Double): Boolean; override;
+    function InternalReadInteger(const AName: String; out AValue: Integer): Boolean; override;
+    function InternalReadString(const AName: String; out AValue: String): Boolean; override;
   public
-    // IX2Settings implementation
-    function ReadBool(const AName: String; const ADefault: Boolean = False): Boolean; override;
-    function ReadFloat(const AName: String; const ADefault: Double = 0.0): Double; override;
-    function ReadInteger(const AName: String; const ADefault: Integer = 0): Integer; override;
-    function ReadString(const AName: String; const ADefault: String = ''): String; override;
-
     procedure WriteBool(const AName: String; AValue: Boolean); override;
     procedure WriteFloat(const AName: String; AValue: Double); override;
     procedure WriteInteger(const AName: String; AValue: Integer); override;
@@ -73,7 +43,8 @@ type
     procedure DeleteSection(); override;
     procedure DeleteValue(const AName: String); override;
   public
-    constructor Create(const AFilename, ASection: String);
+    constructor CreateInit(const AFactory: TX2SettingsFactory;
+                           const ASection, AFilename: String);
     destructor Destroy(); override;
   end;
 
@@ -101,16 +72,16 @@ uses
 ========================================}
 function TX2INISettingsFactory.GetSection;
 begin
-  Result  := TX2INISettings.Create(FFilename, ASection);
+  Result  := TX2INISettings.CreateInit(Self, ASection, FFilename);
 end;
 
 
 {========================= TX2INISettings
   Initialization
 ========================================}
-constructor TX2INISettings.Create;
+constructor TX2INISettings.CreateInit;
 begin
-  inherited Create();
+  inherited Create(AFactory, ASection);
 
   FData     := TMemIniFile.Create(AFilename);
   FSection  := ASection;
@@ -128,24 +99,28 @@ end;
 {========================= TX2INISettings
   Read
 ========================================}
-function TX2INISettings.ReadBool;
+function TX2INISettings.InternalReadBool;
 begin
-  Result  := FData.ReadBool(FSection, AName, ADefault);
+  AValue  := FData.ReadBool(FSection, AName, False);
+  Result  := True;
 end;
 
-function TX2INISettings.ReadFloat;
+function TX2INISettings.InternalReadFloat;
 begin
-  Result  := FData.ReadFloat(FSection, AName, ADefault);
+  AValue  := FData.ReadFloat(FSection, AName, 0);
+  Result  := True;
 end;
 
-function TX2INISettings.ReadInteger;
+function TX2INISettings.InternalReadInteger;
 begin
-  Result  := FData.ReadInteger(FSection, AName, ADefault);
+  AValue  := FData.ReadInteger(FSection, AName, 0);
+  Result  := True;
 end;
 
-function TX2INISettings.ReadString;
+function TX2INISettings.InternalReadString;
 begin
-  Result  := FData.ReadString(FSection, AName, ADefault);
+  AValue  := FData.ReadString(FSection, AName, '');
+  Result  := True;
 end;
 
 
