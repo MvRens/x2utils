@@ -6,7 +6,7 @@
   ::
   :: Last changed:    $Date$
   :: Revision:        $Rev$
-  :: Author:          $LastChangedBy$
+  :: Author:          $Author$
 
   :$
   :$
@@ -37,13 +37,10 @@
 unit X2UtStrings;
 
 interface
-  {
-    :$ Formats the specified size
-
-    :: If KeepBytes is true, the size will be formatted for decimal separators
-    :: and 'bytes' will be appended. If KeepBytes is false the best suitable
-    :: unit will be chosen (KB, MB, GB).
-  }
+  //:$ Formats the specified size
+  //:: If KeepBytes is true, the size will be formatted for decimal separators
+  //:: and 'bytes' will be appended. If KeepBytes is false the best suitable
+  //:: unit will be chosen (KB, MB, GB).
   function FormatSize(const Bytes: Int64; KeepBytes: Boolean = False): String;
 
 implementation

@@ -1,9 +1,6 @@
 {
-  :: X2UtHandCursor replaces the default Delphi hand cursor with the system
-  :: hand cursor if available, or a copy when running on Windows 95.
-  ::
-  :: Including this unit in your project will automatically replace the
-  :: hand cursor, no further actions are necessary.
+  :: X2UtVirtualTree provides a set of functions commonly used with
+  :: TVirtualTree (http://www.delphi-gems.com/).
   ::
   :: Subversion repository available at:
   ::   $URL$
@@ -38,29 +35,29 @@
   :$ /n/n
   :$ 3. This notice may not be removed or altered from any source distribution.
 }
-unit X2UtHandCursor;
+unit X2UtVirtualTree;
 
 interface
+uses
+  VirtualTrees;
+
+  //:$ Applies the sort order on the specified column
+  //:: When a column is already sorted, the sort order is reversed.
+  procedure SortColumn(const AHeader: TVTHeader;
+                       const AColumn: TColumnIndex);
 
 implementation
-uses
-  Controls,
-  Forms,
-  Windows;
 
-{$R X2UtHandCursor.RES}
-
-var
-  hCursor:          THandle;
-
-initialization
-  hCursor := LoadCursor(0, IDC_HAND);
-  if hCursor = 0 then
-    hCursor := LoadCursor(hInstance, 'X2UTHANDCURSOR');
-
-  if hCursor <> 0 then
-    Screen.Cursors[crHandpoint] := hCursor;
-
-finalization
+procedure SortColumn;
+begin
+  with AHeader do
+    if SortColumn = AColumn then
+      SortDirection := TSortDirection(1 - Integer(SortDirection))
+    else begin
+      SortColumn    := AColumn;
+      SortDirection := sdAscending;
+    end;
+end;
 
 end.
+ 

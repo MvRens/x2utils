@@ -8,7 +8,7 @@
   ::
   :: Last changed:    $Date$
   :: Revision:        $Rev$
-  :: Author:          $LastChangedBy$
+  :: Author:          $Author$
 
   :$
   :$
@@ -161,6 +161,7 @@ type
     property Version:   TX2AppVersion   read FVersion;
   end;
 
+  //:$ Returns a singleton App object
   function App(): TX2App;
 
 implementation

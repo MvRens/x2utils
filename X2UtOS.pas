@@ -8,7 +8,7 @@
   ::
   :: Last changed:    $Date$
   :: Revision:        $Rev$
-  :: Author:          $LastChangedBy$
+  :: Author:          $Author$
 
   :$
   :$
@@ -43,9 +43,7 @@ uses
   Windows;
 
 type
-  {
-    :$ Enumerates the recognized Operating System versions
-  }
+  //:$ Enumeration of the recognized Operating System versions
   TX2OSVersion  =(osUnknown, osWin95, osWin98, osWinME, osWinNT3, osWinNT4,
                   osWin2K, osWinXP, osWin2003);
 

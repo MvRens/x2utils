@@ -7,7 +7,7 @@
   ::
   :: Last changed:    $Date$
   :: Revision:        $Rev$
-  :: Author:          $LastChangedBy$
+  :: Author:          $Author$
 
   :$
   :$
@@ -53,64 +53,45 @@ type
     procedure OnInstance(const ACmdLine: String);
   end;
 
-  {
-    :$ Checks for a previous instance of the application
-
-    :: Returns False if a previous instance was found, True if this is the
-    :: first registered instance. ApplicationID must be unique to prevent
-    :: application conflicts, usage of a generated GUID is recommended.
-
-    :! Set ANotify to False if you're using SingleInstance in a console
-    :! application without a message loop.
-  }
+  //:$ Checks for a previous instance of the application
+  //:: Returns False if a previous instance was found, True if this is the
+  //:: first registered instance. ApplicationID must be unique to prevent
+  //:: application conflicts, usage of a generated GUID is recommended.
+  //:! Set ANotify to False if you're using SingleInstance in a console
+  //:! application without a message loop.
   function SingleInstance(const AApplicationID: String;
                           const ANotify: Boolean = True): Boolean;
 
-  {
-    :$ Registers the instance for notifications
-
-    :: If an application wants to be notified of new instances it must
-    :: implement the IX2InstanceNotifier and register the interface using
-    :: this function.
-  }
+  //:$ Registers the instance for notifications
+  //:: If an application wants to be notified of new instances it must
+  //:: implement the IX2InstanceNotifier and register the interface using
+  //:: this function.
   procedure RegisterInstance(const ANotifier: IX2InstanceNotifier);
 
-  {
-    :$ Unregisters a previously registered instance
-  }
+  //:$ Unregisters a previously registered instance
   procedure UnregisterInstance(const ANotifier: IX2InstanceNotifier);
 
 
-  {
-    :$ Works like System.ParamCount, but uses the specified string instead
-    :$ of the actual command line
-  }
+  //:$ Works like System.ParamCount, but uses the specified string instead
+  //:$ of the actual command line
   function ParamCountEx(const ACmdLine: String): Integer;
 
-  {
-    :$ Works like System.ParamStr, but uses the specified string instead
-    :$ of the actual command line
-  }
+  //:$ Works like System.ParamStr, but uses the specified string instead
+  //:$ of the actual command line
   function ParamStrEx(const ACmdLine: String; AIndex: Integer): String;
 
-  {
-    :$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
-    :$ instead of the actual command line
-  }
+  //:$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
+  //:$ instead of the actual command line
   function FindCmdLineSwitchEx(const ACmdLine, ASwitch: String;
                                const AChars: TSysCharSet;
                                const AIgnoreCase: Boolean): Boolean; overload;
 
-  {
-    :$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
-    :$ instead of the actual command line
-  }
+  //:$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
+  //:$ instead of the actual command line
   function FindCmdLineSwitchEx(const ACmdLine, ASwitch: String): Boolean; overload;
 
-  {
-    :$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
-    :$ instead of the actual command line
-  }
+  //:$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
+  //:$ instead of the actual command line
   function FindCmdLineSwitchEx(const ACmdLine, ASwitch: String;
                                const AIgnoreCase: Boolean): Boolean; overload;
 
