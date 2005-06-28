@@ -114,9 +114,13 @@ type
   function ChildPathEx(var AChild, AParent: String;
                        const AFailIfSame: Boolean = False): Boolean;
 
+  function ReplacePart(const ASource: String; const AStart, ALength: Integer;
+                       const AReplace: String): String;
+
 implementation
 uses
-  SysUtils;
+  SysUtils,
+  Windows;
 
 function FormatSize(const ABytes: Int64; AKeepBytes: Boolean = False): String;
 const
@@ -377,6 +381,36 @@ begin
   Result  := SameTextS(AChild, AParent) and
              ((not AFailIfSame) or
               (Length(AChild) > Length(AParent)));
+end;
+
+
+function ReplacePart(const ASource: String; const AStart, ALength: Integer;
+                     const AReplace: String): String;
+var
+  iSrcLength: Integer;
+  iLength:    Integer;
+  iDiff:      Integer;
+  iDest:      Integer;
+
+begin
+  iSrcLength  := Length(ASource);
+  iLength     := Length(AReplace);
+  iDiff       := iLength - ALength;
+  iDest       := 1;
+
+  SetLength(Result, iSrcLength + iDiff);
+
+  // Write first part
+  CopyMemory(@Result[iDest], @ASource[1], AStart - 1);
+  Inc(iDest, AStart - 1);
+
+  // Write replacement
+  CopyMemory(@Result[iDest], @AReplace[1], iLength);
+  Inc(iDest, iLength);
+
+  // Write last part
+  CopyMemory(@Result[iDest], @ASource[AStart + ALength],
+             iSrcLength - AStart - (ALength - 1));
 end;
 
 end.
