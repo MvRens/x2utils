@@ -2,8 +2,17 @@
   :: X2UtHashes contains a base class for hashes (also known as associative
   :: arrays), as well as various default implementations.
   ::
-  :: This unit contains code based on Bob Jenkins' optimized hashing algorithm:
-  ::    http://burtleburtle.net/bob/hash/doobs.html
+  :: The useable implementations have a naming convention of TX2<tt>Hash,
+  :: where <tt> are two characters representing the key and value types,
+  :: according to the following table:
+  ::
+  :: P  = Pointer
+  :: I  = Integer
+  :: O  = Object
+  :: S  = String
+  ::
+  :: For example; TX2SOHash indicates that it uses String keys to identify
+  :: Object values.
   ::
   :: Last changed:    $Date$
   :: Revision:        $Rev$
@@ -13,646 +22,1842 @@ unit X2UtHashes;
 
 interface
 uses
-  SysUtils,
-  X2UtBinaryTree;
+  Classes,
+  SysUtils;
+
+const
+  // Do NOT change these values unless you really know
+  // what you are doing!
+  LeafSize    = 256;
+  BucketSize  = 8;
 
 type
+  //:$ Raised when the cursor is not available
+  EX2HashNoCursor = class(Exception);
+
   {
-    :$ Internal representation of a hash item
+    :$ Internal representation of a hash item.
   }
   PX2HashItem   = ^TX2HashItem;
   TX2HashItem   = record
-    Prev:           PX2HashItem;
-    Next:           PX2HashItem;
-    Key:            String;
-    Data:           record end;
+    ID:             Cardinal;
+  end;
+
+  PX2HashBucket = ^TX2HashBucket;
+  TX2HashBucket = record
+    ID:             Cardinal;
+    Level:          Integer;
+    Count:          Integer;
+    Items:          array[0..Pred(LeafSize)] of PX2HashItem;
+  end;
+
+  PX2HashValue  = ^TX2HashValue;
+  TX2HashValue  = record
+    ID:             Cardinal;
+    Next:           PX2HashValue;
+    Key:            Pointer;
+    Value:          Pointer;
+  end;
+
+  TX2BucketPath = record
+    Bucket:         PX2HashBucket;
+    Index:          Integer;
   end;
 
   {
-    :$ Internal hash list
-  }
-  PX2HashList   = ^TX2HashList;
-  TX2HashList   = record
-    Root:           PX2HashItem;
-  end;
+    :$ Default cursor implementation.
 
-  {
-    :$ Hash implementation
-
-    :: This class implements a hash without knowing anything about
-    :: the data it contains.
+    :: Traverses the hash trie from top-to-bottom, left-to-right.
   }
-  TX2CustomHash = class(TX2CustomBTree)
+  TX2HashCursor = class(TObject)
   private
-    FHashCursor:        PX2HashItem;
-    FHashDataSize:      Cardinal;
-    FHashItemSize:      Cardinal;
+    FBucketPath:        array of TX2BucketPath;
+    FCurrent:           PX2HashValue;
+  protected
+    function GetCurrent(): PX2HashValue; virtual;
+  public
+    constructor Create(const ABucket: PX2HashBucket); virtual;
 
+    procedure First(); virtual;
+    function Next(): Boolean; virtual;
+
+    property Current:       PX2HashValue  read GetCurrent;
+  end;
+
+  {
+    :$ Base value manager.
+  }
+  TX2CustomHashManager  = class(TObject)
+  public
+    procedure Initialize(var AData: Pointer); virtual;
+    procedure Finalize(var AData: Pointer); virtual;
+
+    function DataSize(const AData: Pointer): Cardinal; virtual;
+    function DataPointer(const AData: Pointer): Pointer; virtual;
+
+    function ToPointer(const AValue: Pointer; const ASize: Cardinal): Pointer; overload; virtual;
+    function ToValue(const AData: Pointer; var AValue): Cardinal; overload; virtual;
+
+    function Compare(const AData: Pointer; const AValue: Pointer;
+                     const ASize: Cardinal): Boolean; virtual;
+  end;
+
+  TX2HashPointerManager = class(TX2CustomHashManager)
+  public
+    function ToPointer(const AValue: Pointer): Pointer; overload;
+    function ToValue(const AData: Pointer): Pointer; overload;
+  end;
+
+  {
+    :$ Integer value class.
+  }
+  TX2HashIntegerManager = class(TX2CustomHashManager)
+  public
+    function ToPointer(const AValue: Integer): Pointer; overload;
+    function ToValue(const AData: Pointer): Integer; overload;
+  end;
+
+  {
+    :$ Object value class.
+  }
+  TX2HashObjectManager  = class(TX2CustomHashManager)
+  private
+    FOwnsObjects:     Boolean;
+  public
+    procedure Finalize(var AData: Pointer); override;
+
+    function ToPointer(const AValue: TObject): Pointer; overload;
+    function ToValue(const AData: Pointer): TObject; overload;
+
+    property OwnsObjects:     Boolean read FOwnsObjects write FOwnsObjects;
+  end;
+
+  {
+    :$ String value class.
+  }
+  TX2HashStringManager  = class(TX2CustomHashManager)
+  public
+    procedure Finalize(var AData: Pointer); override;
+
+    function DataSize(const AData: Pointer): Cardinal; override;
+    function DataPointer(const AData: Pointer): Pointer; override;
+
+    function ToPointer(const AValue: Pointer; const ASize: Cardinal): Pointer; override;
+    function ToValue(const AData: Pointer; var AValue): Cardinal; override;
+    function ToPointer(const AValue: String): Pointer; overload;
+    function ToValue(const AData: Pointer): String; overload;
+
+    function Compare(const AData: Pointer; const AValue: Pointer;
+                     const ASize: Cardinal): Boolean; override;
+  end;
+
+  {
+    :$ Hash implementation.
+  }
+  TX2CustomHash = class(TPersistent)
+  private
+    FRoot:              PX2HashBucket;
+    FCount:             Integer;
+
+    FCursor:            TX2HashCursor;
+    FKeyManager:        TX2CustomHashManager;
+    FValueManager:      TX2CustomHashManager;
+  protected
+    function CreateCursor(): TX2HashCursor; virtual;
+    function CreateKeyManager(): TX2CustomHashManager; virtual; abstract;
+    function CreateValueManager(): TX2CustomHashManager; virtual; abstract;
+    procedure InvalidateCursor();
+
+    function Hash(const AKey: Pointer; const ASize: Cardinal): Cardinal; virtual;
+    procedure CursorRequired();
+
+    function InternalFind(const ABucket: PX2HashBucket;
+                          const AHash: Cardinal; const AKey: Pointer;
+                          const ASize: Cardinal;
+                          const AAllowCreate: Boolean;
+                          const AExisting: PX2HashValue = nil): PX2HashValue;
+    function InternalDelete(const ABucket: PX2HashBucket;
+                            const AHash: Cardinal; const AKey: Pointer;
+                            const ASize: Cardinal): Boolean;
+
+    function Find(const AKey: Pointer; const ASize: Cardinal;
+                  const AAllowCreate: Boolean): PX2HashValue; overload;
+    function Exists(const AKey: Pointer; const ASize: Cardinal): Boolean; overload;
+    function Delete(const AKey: Pointer; const ASize: Cardinal): Boolean; overload;
+
+    procedure SetValue(const AValue: PX2HashValue; const AData: Pointer);
+
+    property Cursor:            TX2HashCursor         read FCursor;
+    property KeyManager:        TX2CustomHashManager  read FKeyManager;
+    property ValueManager:      TX2CustomHashManager  read FValueManager;
+  public
+    constructor Create(); virtual;
+    destructor Destroy(); override;
+
+    procedure First();
+    function Next(): Boolean;
+
+    property Count:     Integer read FCount;
+  end;
+
+  {
+    :$ Base hash implementation for pointer keys.
+  }
+  TX2CustomPointerHash  = class(TX2CustomHash)
+  private
+    function GetCurrentKey(): Pointer;
+  protected
+    function CreateKeyManager(): TX2CustomHashManager; override;
+    function Find(const AKey: Pointer;
+                  const AAllowCreate: Boolean): PX2HashValue; overload;
+  public
+    function Exists(const AKey: Pointer): Boolean; overload;
+    function Delete(const AKey: Pointer): Boolean; overload;
+
+    property CurrentKey:      Pointer read GetCurrentKey;
+  end;
+
+  {
+    :$ Base hash implementation for integer keys.
+  }
+  TX2CustomIntegerHash  = class(TX2CustomHash)
+  private
+    function GetCurrentKey(): Integer;
+  protected
+    function CreateKeyManager(): TX2CustomHashManager; override;
+    function Find(const AKey: Integer;
+                  const AAllowCreate: Boolean): PX2HashValue; overload;
+  public
+    function Exists(const AKey: Integer): Boolean; overload;
+    function Delete(const AKey: Integer): Boolean; overload;
+
+    property CurrentKey:      Integer read GetCurrentKey;
+  end;
+
+  {
+    :$ Base hash implementation for object keys.
+  }
+  TX2CustomObjectHash  = class(TX2CustomHash)
+  private
+    function GetCurrentKey(): TObject;
+  protected
+    function CreateKeyManager(): TX2CustomHashManager; override;
+    function Find(const AKey: TObject;
+                  const AAllowCreate: Boolean): PX2HashValue; overload;
+  public
+    function Exists(const AKey: TObject): Boolean; overload;
+    function Delete(const AKey: TObject): Boolean; overload;
+
+    property CurrentKey:      TObject read GetCurrentKey;
+  end;
+
+  {
+    :$ Base hash implementation for string keys.
+  }
+  TX2CustomStringHash = class(TX2CustomHash)
+  private
     function GetCurrentKey(): String;
-    function GetHashTotalSize(): Cardinal;
   protected
-    function Hash(const AValue: String): Cardinal; virtual;
-
-    function GetItemData(const AItem: PX2HashItem): Pointer; virtual;
-    function LookupItem(const AKey: String;
-                        out ANode: PX2BTreeNode;
-                        const ACanCreate: Boolean = False;
-                        const ASetCursor: Boolean = False): PX2HashItem;
-
-    procedure FreeNode(var ANode: PX2BTreeNode); override;
-
-    procedure ClearCursor(); override;
-    function ValidCursor(const ARaiseError: Boolean = True): Boolean; override;
-
-    procedure InitHashItem(var AItem: PX2HashItem); virtual;
-    procedure FreeHashItem(var AItem: PX2HashItem); virtual;
-
-    property HashCursor:        PX2HashItem     read FHashCursor    write FHashCursor;
-    property HashItemSize:      Cardinal        read FHashItemSize;
-    property HashTotalSize:     Cardinal        read GetHashTotalSize;
-    property HashDataSize:      Cardinal        read FHashDataSize  write FHashDataSize;
-
-    //:$ Returns the key at the current cursor location.
-    property CurrentKey:        String          read GetCurrentKey;
+    function CreateKeyManager(): TX2CustomHashManager; override;
+    function Find(const AKey: String;
+                  const AAllowCreate: Boolean): PX2HashValue; overload;
   public
-    constructor Create(); override;
+    function Exists(const AKey: String): Boolean; overload;
+    function Delete(const AKey: String): Boolean; overload;
 
-    //:$ Deletes an item from the hash.
-    procedure Delete(const AKey: String);
-
-    function Next(): Boolean; override;
-
-    //:$ Checks if a key exists in the hash.
-    //:: If the ASetCursor parameter is set to True, the cursor will be
-    //:: positioned at the item if it is found.
-    function Exists(const AKey: String; const ASetCursor: Boolean = False): Boolean;
-  end;
-
-  {
-    :$ Hash implementation for pointer values
-  }
-  TX2Hash       = class(TX2CustomHash)
-  protected
-    function GetItem(Key: String): Pointer;
-    procedure SetItem(Key: String; const Value: Pointer);
-
-    function GetCurrentValue(): Pointer;
-  public
-    constructor Create(); override;
-    property CurrentKey;
-
-    //:$ Gets or sets an item.
-    property Items[Key: String]:        Pointer read GetItem
-                                                write SetItem; default;
-
-    //:$ Returns the value at the current cursor location.
-    property CurrentValue:      Pointer         read GetCurrentValue;
-  end;
-
-  {
-    :$ Hash implementation for integer values
-  }
-  TX2IntegerHash    = class(TX2Hash)
-  protected
-    function GetItem(Key: String): Integer;
-    procedure SetItem(Key: String; const Value: Integer);
-
-    function GetCurrentValue(): Integer;
-  public
-    //:$ Gets or sets an item.
-    property Items[Key: String]:        Integer read GetItem
-                                                write SetItem; default;
-
-    //:$ Returns the value at the current cursor location.
-    property CurrentValue:      Integer         read GetCurrentValue;
+    property CurrentKey:      String  read GetCurrentKey;
   end;
 
 
   {
-    :$ Hash implementation for string values
+    :$ Pointer-to-Pointer hash.
   }
-  TX2StringHash = class(TX2CustomHash)
-  protected
-    function GetItem(Key: String): String;
-    procedure SetItem(Key: String; const Value: String);
-
-    function GetCurrentValue(): String;
-  protected
-    procedure InitHashItem(var AItem: PX2HashItem); override;
-    procedure FreeHashItem(var AItem: PX2HashItem); override;
-  public
-    constructor Create(); override;
-    property CurrentKey;
-
-    //:$ Gets or sets an item.
-    property Items[Key: String]:        String  read GetItem
-                                                write SetItem; default;
-
-    //:$ Returns the value at the current cursor location.
-    property CurrentValue:      String          read GetCurrentValue;
-  end;
-
-  {
-    :$ Hash implementation for object values
-  }
-  TX2ObjectHash     = class(TX2Hash)
+  TX2PPHash     = class(TX2CustomPointerHash)
   private
-    FOwnsObjects:       Boolean;
+    function GetCurrentValue(): Pointer;
+    function GetValue(Key: Pointer): Pointer;
+    procedure SetValue(Key: Pointer; const Value: Pointer);
   protected
-    function GetItem(Key: String): TObject;
-    procedure SetItem(Key: String; const Value: TObject);
-
-    function GetCurrentValue(): TObject;
-  protected
-    procedure FreeHashItem(var AItem: PX2HashItem); override;
+    function CreateValueManager(): TX2CustomHashManager; override;
   public
-    constructor Create(); overload; override;
-    constructor Create(AOwnsObjects: Boolean); reintroduce; overload;
+    property CurrentValue:            Pointer read GetCurrentValue;
+    property Values[Key: Pointer]:    Pointer read GetValue write SetValue; default;
+  end;
 
-    //:$ Gets or sets an item.
-    property Items[Key: String]:        TObject read GetItem
-                                                write SetItem; default;
+  {
+    :$ Pointer-to-Integer hash.
+  }
+  TX2PIHash     = class(TX2CustomPointerHash)
+  private
+    function GetCurrentValue(): Integer;
+    function GetValue(Key: Pointer): Integer;
+    procedure SetValue(Key: Pointer; const Value: Integer);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            Integer read GetCurrentValue;
+    property Values[Key: Pointer]:    Integer read GetValue write SetValue; default;
+  end;
 
-    //:$ Returns the value at the current cursor location.
-    property CurrentValue:      TObject         read GetCurrentValue;
+  {
+    :$ Pointer-to-Object hash.
+  }
+  TX2POHash     = class(TX2CustomPointerHash)
+  private
+    function GetCurrentValue(): TObject;
+    function GetOwnsObjects(): Boolean;
+    procedure SetOwnsObjects(const Value: Boolean);
+    function GetValue(Key: Pointer): TObject;
+    procedure SetValue(Key: Pointer; const Value: TObject);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    constructor Create(const AOwnsObjects: Boolean = False); reintroduce;
 
-    //:$ Determines if objects are destroyed when they are removed
-    property OwnsObjects:       Boolean         read FOwnsObjects
-                                                write FOwnsObjects;
+    property CurrentValue:            TObject read GetCurrentValue;
+    property OwnsObjects:             Boolean read GetOwnsObjects write SetOwnsObjects;
+    property Values[Key: Pointer]:    TObject read GetValue       write SetValue; default;
+  end;
+
+  {
+    :$ Pointer-to-String hash.
+  }
+  TX2PSHash     = class(TX2CustomPointerHash)
+  private
+    function GetCurrentValue(): String;
+    function GetValue(Key: Pointer): String;
+    procedure SetValue(Key: Pointer; const Value: String);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            String  read GetCurrentValue;
+    property Values[Key: Pointer]:    String  read GetValue write SetValue; default;
+  end;
+
+  {
+    :$ Integer-to-Pointer hash.
+  }
+  TX2IPHash     = class(TX2CustomIntegerHash)
+  private
+    function GetCurrentValue(): Pointer;
+    function GetValue(Key: Integer): Pointer;
+    procedure SetValue(Key: Integer; const Value: Pointer);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            Pointer read GetCurrentValue;
+    property Values[Key: Integer]:    Pointer read GetValue write SetValue; default;
+  end;
+
+  {
+    :$ Integer-to-Integer hash.
+  }
+  TX2IIHash     = class(TX2CustomIntegerHash)
+  private
+    function GetCurrentValue(): Integer;
+    function GetValue(Key: Integer): Integer;
+    procedure SetValue(Key: Integer; const Value: Integer);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            Integer read GetCurrentValue;
+    property Values[Key: Integer]:    Integer read GetValue write SetValue; default;
+  end;
+
+  {
+    :$ Integer-to-Object hash.
+  }
+  TX2IOHash     = class(TX2CustomIntegerHash)
+  private
+    function GetCurrentValue(): TObject;
+    function GetOwnsObjects(): Boolean;
+    procedure SetOwnsObjects(const Value: Boolean);
+    function GetValue(Key: Integer): TObject;
+    procedure SetValue(Key: Integer; const Value: TObject);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    constructor Create(const AOwnsObjects: Boolean = False); reintroduce;
+
+    property CurrentValue:            TObject read GetCurrentValue;
+    property OwnsObjects:             Boolean read GetOwnsObjects write SetOwnsObjects;
+    property Values[Key: Integer]:    TObject read GetValue       write SetValue; default;
+  end;
+
+  {
+    :$ Integer-to-String hash.
+  }
+  TX2ISHash     = class(TX2CustomIntegerHash)
+  private
+    function GetCurrentValue(): String;
+    function GetValue(Key: Integer): String;
+    procedure SetValue(Key: Integer; const Value: String);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            String  read GetCurrentValue;
+    property Values[Key: Integer]:    String  read GetValue write SetValue; default;
+  end;
+
+  {
+    :$ Object-to-Pointer hash.
+  }
+  TX2OPHash     = class(TX2CustomObjectHash)
+  private
+    function GetCurrentValue(): Pointer;
+    function GetValue(Key: TObject): Pointer;
+    procedure SetValue(Key: TObject; const Value: Pointer);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            Pointer read GetCurrentValue;
+    property Values[Key: TObject]:    Pointer read GetValue write SetValue; default;
+  end;
+
+  {
+    :$ Object-to-Integer hash.
+  }
+  TX2OIHash     = class(TX2CustomObjectHash)
+  private
+    function GetCurrentValue(): Integer;
+    function GetValue(Key: TObject): Integer;
+    procedure SetValue(Key: TObject; const Value: Integer);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            Integer read GetCurrentValue;
+    property Values[Key: TObject]:    Integer read GetValue write SetValue; default;
+  end;
+
+  {
+    :$ Object-to-Object hash.
+  }
+  TX2OOHash     = class(TX2CustomObjectHash)
+  private
+    function GetCurrentValue(): TObject;
+    function GetOwnsObjects(): Boolean;
+    procedure SetOwnsObjects(const Value: Boolean);
+    function GetValue(Key: TObject): TObject;
+    procedure SetValue(Key: TObject; const Value: TObject);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    constructor Create(const AOwnsObjects: Boolean = False); reintroduce;
+
+    property CurrentValue:            TObject read GetCurrentValue;
+    property OwnsObjects:             Boolean read GetOwnsObjects write SetOwnsObjects;
+    property Values[Key: TObject]:    TObject read GetValue       write SetValue; default;
+  end;
+
+  {
+    :$ Object-to-String hash.
+  }
+  TX2OSHash     = class(TX2CustomObjectHash)
+  private
+    function GetCurrentValue(): String;
+    function GetValue(Key: TObject): String;
+    procedure SetValue(Key: TObject; const Value: String);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            String  read GetCurrentValue;
+    property Values[Key: TObject]:    String  read GetValue write SetValue; default;
+  end;
+
+  {
+    :$ String-to-Pointer hash.
+  }
+  TX2SPHash     = class(TX2CustomStringHash)
+  private
+    function GetCurrentValue(): Pointer;
+    function GetValue(Key: String): Pointer;
+    procedure SetValue(Key: String; const Value: Pointer);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            Pointer read GetCurrentValue;
+    property Values[Key: String]:     Pointer read GetValue write SetValue; default;
+  end;
+
+  {
+    :$ String-to-Integer hash.
+  }
+  TX2SIHash     = class(TX2CustomStringHash)
+  private
+    function GetCurrentValue(): Integer;
+    function GetValue(Key: String): Integer;
+    procedure SetValue(Key: String; const Value: Integer);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            Integer read GetCurrentValue;
+    property Values[Key: String]:     Integer read GetValue write SetValue; default;
+  end;
+
+  {
+    :$ String-to-Object hash.
+  }
+  TX2SOHash     = class(TX2CustomStringHash)
+  private
+    function GetCurrentValue(): TObject;
+    function GetOwnsObjects(): Boolean;
+    procedure SetOwnsObjects(const Value: Boolean);
+    function GetValue(Key: String): TObject;
+    procedure SetValue(Key: String; const Value: TObject);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    constructor Create(const AOwnsObjects: Boolean = False); reintroduce;
+
+    property CurrentValue:            TObject read GetCurrentValue;
+    property OwnsObjects:             Boolean read GetOwnsObjects write SetOwnsObjects;
+    property Values[Key: String]:     TObject read GetValue       write SetValue; default;
+  end;
+
+  {
+    :$ String-to-String hash.
+  }
+  TX2SSHash     = class(TX2CustomStringHash)
+  private
+    function GetCurrentValue(): String;
+    function GetValue(Key: String): String;
+    procedure SetValue(Key: String; const Value: String);
+  protected
+    function CreateValueManager(): TX2CustomHashManager; override;
+  public
+    property CurrentValue:            String  read GetCurrentValue;
+    property Values[Key: String]:     String  read GetValue write SetValue; default;
   end;
 
 implementation
-resourcestring
-  RSEmptyKey  = 'Cannot hash an empty key!';
+const
+  HIDBucket   = 1;
+  HIDValue    = 2;
+
+  CRC32Poly   = $edb88320;
+
+var
+  CRC32Table:   array[Byte] of Cardinal;
+
+
+{========================================
+  CRC32
+========================================}
+procedure CRC32Init();
+var
+  iItem:      Integer;
+  iPoly:      Integer;
+  iValue:     Cardinal;
+
+begin
+  for iItem := 255 downto 0 do
+  begin
+    iValue  := iItem;
+
+    for iPoly := 8 downto 1 do
+      if (iValue and $1) <> 0 then
+        iValue  := (iValue shr $1) xor CRC32Poly
+      else
+        iValue  := iValue shr $1;
+
+    CRC32Table[iItem] := iValue;
+  end;
+end;
+
+function CRC32(const AKey: Pointer; const ASize: Cardinal): Cardinal;
+var
+  iByte:      Integer;
+  pByte:      ^Byte;
+
+begin
+  Result  := $FFFFFFFF;
+  pByte   := AKey;
+
+  for iByte := Pred(ASize) downto 0 do
+  begin
+    Result  := (((Result shr 8) and $00FFFFFF) xor
+                (CRC32Table[(Result xor pByte^) and $FF]));
+    Inc(pByte);
+  end;
+end;
+
+
+{========================================
+  TX2HashCursor
+========================================}
+constructor TX2HashCursor.Create(const ABucket: PX2HashBucket);
+begin
+  inherited Create();
+
+  SetLength(FBucketPath, 1);
+  with FBucketPath[0] do
+  begin
+    Bucket  := ABucket;
+    Index   := 0;
+  end;
+
+  FCurrent  := nil;
+end;
+
+function TX2HashCursor.GetCurrent(): PX2HashValue;
+begin
+  Result  := FCurrent;
+end;
+
+
+procedure TX2HashCursor.First();
+begin
+  if Length(FBucketPath) > 1 then
+  begin
+    SetLength(FBucketPath, 1);
+    FBucketPath[0].Index  := 0;
+  end;
+
+  FCurrent  := nil;
+end;
+
+function TX2HashCursor.Next(): Boolean;
+var
+  bFound:     Boolean;
+  iIndex:     Integer;
+  pBucket:    PX2HashBucket;
+  pItem:      PX2HashItem;
+
+begin
+  Result  := False;
+  iIndex  := High(FBucketPath);
+  if iIndex = -1 then
+    exit;
+
+  if (FCurrent <> nil) and (FCurrent^.Next <> nil) then
+  begin
+    FCurrent  := FCurrent^.Next;
+    Result    := True;
+    exit;
+  end;
+
+  repeat
+    pBucket := FBucketPath[iIndex].Bucket;
+    bFound  := False;
+
+    while FBucketPath[iIndex].Index < LeafSize do
+    begin
+      pItem := pBucket^.Items[FBucketPath[iIndex].Index];
+
+      if pItem = nil then
+        Inc(FBucketPath[iIndex].Index)
+      else
+        case pItem^.ID of
+          HIDBucket:
+            begin
+              // Bucket, continue down the path
+              Inc(iIndex);
+              SetLength(FBucketPath, iIndex + 1);
+              with FBucketPath[iIndex] do
+              begin
+                Bucket  := PX2HashBucket(pItem);
+                Index   := 0;
+              end;
+              bFound  := True;
+              break;
+            end;
+          HIDValue:
+            begin
+              // Got a value
+              FCurrent  := PX2HashValue(pItem);
+              Result    := True;
+              Inc(FBucketPath[iIndex].Index);
+              exit;
+            end;
+        end;
+    end;
+
+    if not bFound then
+      // Nothing found
+      if iIndex > 0 then
+      begin
+        // Go up in the bucket path
+        SetLength(FBucketPath, iIndex);
+        Dec(iIndex);
+        Inc(FBucketPath[iIndex].Index);
+      end else
+        // No more items
+        break;
+  until False;
+end;
+
+
+{========================================
+  TX2CustomHashManager
+========================================}
+procedure TX2CustomHashManager.Initialize(var AData: Pointer);
+begin
+  AData := nil;
+end;
+
+procedure TX2CustomHashManager.Finalize(var AData: Pointer);
+begin
+  AData := nil;
+end;
+
+function TX2CustomHashManager.DataSize(const AData: Pointer): Cardinal;
+begin
+  Result  := SizeOf(Pointer);
+end;
+
+function TX2CustomHashManager.DataPointer(const AData: Pointer): Pointer;
+begin
+  Result  := AData;
+end;
+
+function TX2CustomHashManager.ToPointer(const AValue: Pointer;
+                                        const ASize: Cardinal): Pointer;
+begin
+  Result  := Pointer(AValue);
+end;
+
+function TX2CustomHashManager.ToValue(const AData: Pointer;
+                                      var AValue): Cardinal;
+begin
+  Result          := DataSize(AData);
+  Pointer(AValue) := AData;
+end;
+
+function TX2CustomHashManager.Compare(const AData: Pointer; const AValue: Pointer;
+                                      const ASize: Cardinal): Boolean;
+begin
+  Result  := (Pointer(AValue) = AData);
+end;
+
+
+{========================================
+  TX2HashPointerManager
+========================================}
+function TX2HashPointerManager.ToPointer(const AValue: Pointer): Pointer;
+begin
+  Result  := ToPointer(AValue, SizeOf(Pointer));
+end;
+
+function TX2HashPointerManager.ToValue(const AData: Pointer): Pointer;
+begin
+  ToValue(AData, Result);
+end;
+
+
+{========================================
+  TX2HashIntegerManager
+========================================}
+function TX2HashIntegerManager.ToPointer(const AValue: Integer): Pointer;
+begin
+  Result  := ToPointer(Pointer(AValue), SizeOf(Integer));
+end;
+
+function TX2HashIntegerManager.ToValue(const AData: Pointer): Integer;
+begin
+  ToValue(AData, Result);
+end;
+
+
+{========================================
+  TX2HashObjectManager
+========================================}
+procedure TX2HashObjectManager.Finalize(var AData: Pointer);
+begin
+  if (AData <> nil) and (FOwnsObjects) then
+    TObject(AData).Free();
+
+  inherited;
+end;
+
+function TX2HashObjectManager.ToPointer(const AValue: TObject): Pointer;
+begin
+  Result  := ToPointer(Pointer(AValue), SizeOf(Integer));
+end;
+
+function TX2HashObjectManager.ToValue(const AData: Pointer): TObject;
+begin
+  ToValue(AData, Result);
+end;
+
+
+{========================================
+  TX2HashStringManager
+========================================}
+procedure TX2HashStringManager.Finalize(var AData: Pointer);
+begin
+  if AData <> nil then
+    FreeMem(AData, PCardinal(AData)^ + SizeOf(Cardinal));
+    
+  inherited;
+end;
+
+function TX2HashStringManager.DataSize(const AData: Pointer): Cardinal;
+begin
+  Result  := PCardinal(AData)^;
+end;
+
+function TX2HashStringManager.DataPointer(const AData: Pointer): Pointer;
+begin
+  Result  := AData;
+  Inc(PCardinal(Result));
+end;
+
+function TX2HashStringManager.ToPointer(const AValue: Pointer;
+                                        const ASize: Cardinal): Pointer;
+var
+  pData:      Pointer;
+
+begin
+  // Add a 4-byte Length to the start, emulating AnsiStrings
+  // (except for the reference counting) 
+  GetMem(Result, ASize + SizeOf(Cardinal));
+  PCardinal(Result)^  := ASize;
+  pData               := Result;
+  Inc(PCardinal(pData));
+  Move(AValue^, pData^, ASize);
+end;
+
+function TX2HashStringManager.ToValue(const AData: Pointer;
+                                      var AValue): Cardinal;
+var
+  pData:      Pointer;
+  
+begin
+  Result  := DataSize(AData);
+  pData   := DataPointer(AData);
+
+  SetLength(String(AValue), Result);
+  if Result > 0 then
+    Move(pData^, PChar(String(AValue))^, Result);
+end;
+
+function TX2HashStringManager.ToPointer(const AValue: String): Pointer;
+begin
+  Result  := ToPointer(PChar(AValue), Length(AValue));
+end;
+
+
+function TX2HashStringManager.ToValue(const AData: Pointer): String;
+begin
+  ToValue(AData, Result);
+end;
+
+function TX2HashStringManager.Compare(const AData: Pointer; const AValue: Pointer;
+                                      const ASize: Cardinal): Boolean;
+var
+  pSource:      PChar;
+
+begin
+  Result  := False;
+  if ASize <> PCardinal(AData)^ then
+    exit;
+
+  pSource := AData;
+  Inc(PCardinal(pSource));
+
+  Result  := CompareMem(pSource, AValue, ASize);
+end;
 
 
 {========================== TX2CustomHash
   Initialization
 ========================================}
-constructor TX2CustomHash.Create;
+constructor TX2CustomHash.Create();
 begin
   inherited;
 
-  FHashItemSize := SizeOf(TX2HashItem);
-  DataSize      := FHashItemSize;
+  FKeyManager   := CreateKeyManager();
+  FValueManager := CreateValueManager();
 end;
 
+destructor TX2CustomHash.Destroy();
+  procedure DestroyBucket(const ABucket: PX2HashBucket);
+  var
+    iItem:        Integer;
+    pNext:        PX2HashValue;
+    pValue:       PX2HashValue;
 
-{========================== TX2CustomHash
-  Hashing
-========================================}
-procedure Mix(var A, B, C: Cardinal);
-begin
-  Dec(A, B); Dec(A, C); C := C shr 13;  A := A xor C;
-  Dec(B, C); Dec(B, A); A := A shl 8;   B := B xor A;
-  Dec(C, A); Dec(C, B); B := B shr 13;  C := C xor B;
-  Dec(A, B); Dec(A, C); C := C shr 12;  A := A xor C;
-  Dec(B, C); Dec(B, A); A := A shl 16;  B := B xor A;
-  Dec(C, A); Dec(C, B); B := B shr 5;   C := C xor B;
-  Dec(A, B); Dec(A, C); C := C shr 3;   A := A xor C;
-  Dec(B, C); Dec(B, A); A := A shl 10;  B := B xor A;
-  Dec(C, A); Dec(C, B); B := B shr 15;  C := C xor B;
-end;
-
-function TX2CustomHash.Hash;
-var
-  iA:         Cardinal;
-  iB:         Cardinal;
-  iC:         Cardinal;
-  iLength:    Cardinal;
-  pValue:     PChar;
-
-begin
-  iA      := $9e3779b9;
-  iB      := iA;
-  iC      := iA;
-  iLength := Length(AValue);
-  pValue  := PChar(AValue);
-
-  // Handle most of the key
-  while (iLength >= 12) do
   begin
-    Inc(iA, Ord(pValue[0]) + (Ord(pValue[1]) shl 8) + (Ord(pValue[2]) shl 16) +
-                             (Ord(pValue[3]) shl 24));
-    Inc(iB, Ord(pValue[4]) + (Ord(pValue[5]) shl 8) + (Ord(pValue[6]) shl 16) +
-                             (Ord(pValue[7]) shl 24));
-    Inc(iA, Ord(pValue[8]) + (Ord(pValue[9]) shl 8) + (Ord(pValue[10]) shl 16) +
-                             (Ord(pValue[11]) shl 24));
+    for iItem := Pred(LeafSize) downto 0 do
+      if ABucket^.Items[iItem] <> nil then
+        case ABucket^.Items[iItem].ID of
+          HIDBucket:
+            DestroyBucket(PX2HashBucket(ABucket^.Items[iItem]));
+          HIDValue:
+            begin
+              pValue  := PX2HashValue(ABucket^.Items[iItem]);
+              repeat
+                FKeyManager.Finalize(pValue^.Key);
+                FValueManager.Finalize(pValue^.Value);
 
-    Mix(iA, iB, iC);
-    Inc(pValue, 12);
-    Dec(iLength, 12);
-  end;
-
-  // Handle the last 11 bytes
-  Inc(iC, iLength);
-
-  while iLength > 0 do
-  begin
-    case iLength of
-      11:   Inc(iC, Ord(pValue[10]) shr 24);
-      10:   Inc(iC, Ord(pValue[9]) shr 16);
-      9:    Inc(iC, Ord(pValue[8]) shr 8);
-      8:    Inc(iB, Ord(pValue[7]) shr 24);
-      7:    Inc(iB, Ord(pValue[6]) shr 16);
-      6:    Inc(iB, Ord(pValue[5]) shr 8);
-      5:    Inc(iB, Ord(pValue[4]));
-      4:    Inc(iA, Ord(pValue[3]) shr 24);
-      3:    Inc(iA, Ord(pValue[2]) shr 16);
-      2:    Inc(iA, Ord(pValue[1]) shr 8);
-      1:    Inc(iA, Ord(pValue[0]));
-    end;
-
-    Dec(iLength);
-  end;
-
-  Mix(iA, iB, iC);
-  Result  := iC;
-end;
-
-
-
-{========================== TX2CustomHash
-  Tree Traversing
-========================================}
-function TX2CustomHash.ValidCursor;
-begin
-  Result  := inherited ValidCursor(ARaiseError);
-  if Result then
-  begin
-    Result  := Assigned(FHashCursor);
-
-    if (not Result) and (ARaiseError) then
-      raise EX2BTreeInvalidCursor.Create(RSInvalidCursor);
-  end;
-end;
-
-procedure TX2CustomHash.ClearCursor;
-begin
-  inherited;
-
-  FHashCursor := nil;
-end;
-
-function TX2CustomHash.Next;
-begin
-  if Assigned(FHashCursor) then
-    FHashCursor := FHashCursor^.Next;
-
-  if not Assigned(FHashCursor) then
-  begin
-    Result  := inherited Next();
-    if Result then
-      FHashCursor := PX2HashList(GetNodeData(Cursor))^.Root;
-  end else
-    Result  := True;
-end;
-
-
-{========================== TX2CustomHash
-  Item Management
-========================================}
-function TX2CustomHash.GetItemData;
-begin
-  Assert(HashDataSize > 0, RSInvalidDataSize);
-  Result  := Pointer(Cardinal(AItem) + HashItemSize);
-end;
-
-function TX2CustomHash.LookupItem;
-var
-  iIndex:     Cardinal;
-  pData:      PX2HashList;
-  pFound:     PX2HashItem;
-  pItem:      PX2HashItem;
-  pLast:      PX2HashItem;
-
-begin
-  Result  := nil;
-  iIndex  := Hash(AKey);
-  ANode   := inherited LookupNode(iIndex, ACanCreate, ASetCursor);
-
-  if Assigned(ANode) then
-  begin
-    pData := PX2HashList(GetNodeData(ANode));
-    pItem := pData^.Root;
-    pLast := nil;
-
-    if Assigned(pItem) then
-    begin
-      pFound  := nil;
-
-      // Find key
-      repeat
-        if pItem.Key = AKey then
-        begin
-          pFound  := pItem;
-          break;
+                pNext   := pValue^.Next;
+                FreeMem(pValue, SizeOf(TX2HashValue));
+                pValue  := pNext;
+              until pValue = nil;
+            end;
         end;
 
-        pLast := pItem;
-        pItem := pItem^.Next;
-      until not Assigned(pItem);
+    FreeMem(ABucket, SizeOf(TX2HashBucket));
+  end;
 
-      pItem := pFound;
-    end;
+begin
+  if Assigned(FRoot) then
+  begin
+    DestroyBucket(FRoot);
+    FRoot := nil;
+  end;
 
-    if Assigned(pItem) then
-      Result      := pItem
-    else if ACanCreate then
+  FreeAndNil(FValueManager);
+  FreeAndNil(FKeyManager);
+  FreeAndNil(FCursor);
+
+  inherited;
+end;
+
+
+function TX2CustomHash.CreateCursor(): TX2HashCursor;
+begin
+  Result  := TX2HashCursor.Create(FRoot);
+end;
+
+procedure TX2CustomHash.InvalidateCursor();
+begin
+  FreeAndNil(FCursor);
+end;
+
+
+{========================== TX2CustomHash
+  Item Management
+========================================}
+function ROR(const AValue: Cardinal; const AShift: Byte = 8): Cardinal;
+asm
+  MOV cl, dl
+  ROR eax, cl
+end;
+
+function TX2CustomHash.Hash(const AKey: Pointer; const ASize: Cardinal): Cardinal;
+begin
+  Result  := CRC32(AKey, ASize);
+end;
+
+procedure TX2CustomHash.CursorRequired();
+begin
+  if not Assigned(FCursor) then
+    if Assigned(FRoot) then
+      FCursor := CreateCursor()
+    else
+      raise EX2HashNoCursor.Create('Cursor not available!');
+end;
+
+
+function TX2CustomHash.InternalFind(const ABucket: PX2HashBucket;
+                                    const AHash: Cardinal; const AKey: Pointer;
+                                    const ASize: Cardinal;
+                                    const AAllowCreate: Boolean;
+                                    const AExisting: PX2HashValue): PX2HashValue;
+  function CreateValue(): PX2HashValue;
+  begin
+    if AExisting = nil then
     begin
-      InitHashItem(pItem);
+      GetMem(Result, SizeOf(TX2HashValue));
+      FillChar(Result^, SizeOf(TX2HashValue), #0);
 
-      if not Assigned(pData^.Root) then
-        pData^.Root := pItem;
-
-      if Assigned(pLast) then
-        pLast^.Next := pItem;
-
-      pItem^.Prev := pLast;
-      pItem^.Next := nil;
-      pItem^.Key  := AKey;
-      Result      := pItem;
+      Result^.ID  := HIDValue;
+      Result^.Key := FKeyManager.ToPointer(AKey, ASize);
+      Inc(FCount);
     end else
-      Result      := nil;
+      Result      := AExisting;
+
+    InvalidateCursor();
   end;
 
-  if Assigned(Result) and ASetCursor then
-    FHashCursor := Result;
-end;
-
-
-procedure TX2CustomHash.Delete;
 var
-  bFree:      Boolean;
-  pData:      PX2HashList;
-  pNode:      PX2BTreeNode;
-  pItem:      PX2HashItem;
+  iCount:     Integer;
+  iIndex:     Integer;
+  iKey:       Integer;
+  pBucket:    PX2HashBucket;
+  pKey:       Pointer;
+  pNext:      PX2HashValue;
+  pValue:     PX2HashValue;
 
 begin
-  pItem := LookupItem(AKey, pNode);
-  if Assigned(pItem) then
-  begin
-    pData := GetItemData(pItem);
+  Result  := nil;
+  iIndex  := (AHash and $FF);
 
-    if pData^.Root = pItem then
+  if ABucket^.Items[iIndex] = nil then
+  begin
+    if AAllowCreate then
     begin
-      if Assigned(pItem^.Next) then
-        pData^.Root := pItem^.Next
-      else if Assigned(pItem^.Prev) then
-        pData^.Root := pItem^.Prev
-      else
-        pData^.Root := nil;
+      // New value
+      Result                  := CreateValue();
+      ABucket^.Items[iIndex]  := PX2HashItem(Result);
+      Inc(ABucket^.Count);
     end;
+  end else
+    case ABucket^.Items[iIndex]^.ID of
+      HIDBucket:
+        // Bucket, continue down
+        Result  := InternalFind(PX2HashBucket(ABucket^.Items[iIndex]),
+                                ROR(AHash), AKey, ASize, AAllowCreate);
+      HIDValue:
+        begin
+          iCount  := 0;
+          pValue  := PX2HashValue(ABucket^.Items[iIndex]);
+          while pValue <> nil do
+          begin
+            if FKeyManager.Compare(pValue^.Key, AKey, ASize) then
+            begin
+              // Found existing key
+              Result  := pValue;
+              exit;
+            end;
 
-    bFree := (not Assigned(pData^.Root));
-    FreeHashItem(pItem);
+            pValue  := pValue^.Next;
+            Inc(iCount);
+          end;
 
-    if bFree then
-      FreeNode(pNode);
-  end;
+          if AAllowCreate then
+            if (iCount >= BucketSize) then
+            begin
+              // Bucket full
+              GetMem(pBucket, SizeOf(TX2HashBucket));
+              FillChar(pBucket^, SizeOf(TX2HashBucket), #0);
+              pBucket^.ID     := HIDBucket;
+              pBucket^.Level  := ABucket^.Level + 1;
 
-  inherited Delete(Hash(AKey));
+              pValue          := PX2HashValue(ABucket^.Items[iIndex]);
+              while pValue <> nil do
+              begin
+                // Transfer item
+                iKey          := FKeyManager.DataSize(pValue^.Key);
+                pKey          := FKeyManager.DataPointer(pValue^.Key);
+                pNext         := pValue^.Next;
+                pValue^.Next  := nil;
+
+                InternalFind(pBucket, ROR(Hash(pKey, iKey), pBucket^.Level * 8),
+                             pKey, iKey, True, pValue);
+
+
+                pValue        := pNext;
+              end;
+
+              Result                  := InternalFind(pBucket, ROR(AHash), AKey, ASize, True);
+              ABucket^.Items[iIndex]  := PX2HashItem(pBucket);
+            end else
+            begin
+              // New value
+              Result                  := CreateValue();
+              Result^.Next            := PX2HashValue(ABucket^.Items[iIndex]);
+              ABucket^.Items[iIndex]  := PX2HashItem(Result);
+            end;
+        end;
+    end;
 end;
 
-function TX2CustomHash.Exists;
+function TX2CustomHash.InternalDelete(const ABucket: PX2HashBucket;
+                                      const AHash: Cardinal;
+                                      const AKey: Pointer;
+                                      const ASize: Cardinal): Boolean;
 var
-  pNode:        PX2BTreeNode;
+  iIndex:     Integer;
+  pBucket:    PX2HashBucket;
+  pPrev:      PX2HashValue;
+  pValue:     PX2HashValue;
 
 begin
-  Result  := Assigned(LookupItem(AKey, pNode, False, ASetCursor));
+  Result  := False;
+  iIndex  := (AHash and $FF);
+
+  if ABucket^.Items[iIndex] <> nil then
+    case ABucket^.Items[iIndex]^.ID of
+      HIDBucket:
+        begin
+          // Bucket, continue down
+          pBucket := PX2HashBucket(ABucket^.Items[iIndex]);
+          Result  := InternalDelete(pBucket, ROR(AHash), AKey, ASize);
+
+          if pBucket^.Count = 0 then
+          begin
+            FreeMem(pBucket, SizeOf(TX2HashBucket));
+            ABucket^.Items[iIndex]  := nil;
+          end;
+        end;
+      HIDValue:
+        begin
+          pPrev   := nil;
+          pValue  := PX2HashValue(ABucket^.Items[iIndex]);
+          while pValue <> nil do
+          begin
+            if FKeyManager.Compare(pValue^.Key, AKey, ASize) then
+            begin
+              // Found key
+              if pPrev = nil then
+              begin
+                ABucket^.Items[iIndex]  := PX2HashItem(pValue^.Next);
+                if ABucket^.Items[iIndex] = nil then
+                  Dec(ABucket^.Count);
+              end else
+                pPrev^.Next := pValue^.Next;
+
+              FKeyManager.Finalize(pValue^.Key);
+              FValueManager.Finalize(pValue^.Value);
+              FreeMem(pValue, SizeOf(TX2HashValue));
+              Dec(FCount);
+
+              Result  := True;
+              exit;
+            end;
+
+            pPrev   := pValue;
+            pValue  := pValue^.Next;
+          end;
+        end;
+    end;
 end;
 
 
-function TX2CustomHash.GetCurrentKey;
+function TX2CustomHash.Find(const AKey: Pointer; const ASize: Cardinal;
+                            const AAllowCreate: Boolean): PX2HashValue;
 begin
-  Result  := '';
-  if ValidCursor(True) then
-    Result  := HashCursor^.Key;
-end;
-
-
-procedure TX2CustomHash.FreeNode;
-var
-  pData:        PX2HashItem;
-  pNext:        PX2HashItem;
-
-begin
-  pData := PX2HashList(GetNodeData(ANode))^.Root;
-  while Assigned(pData) do
-  begin
-    pNext := pData^.Next;
-    FreeHashItem(pData);
-    pData := pNext;
-  end;
-
-  inherited;
-end;
-
-
-procedure TX2CustomHash.InitHashItem;
-begin
-  Assert(HashDataSize > 0, RSInvalidDataSize);
-  GetMem(AItem, HashTotalSize);
-  FillChar(AItem^, HashTotalSize, #0);
-end;
-
-procedure TX2CustomHash.FreeHashItem;
-begin
-  if Assigned(AItem^.Prev) then
-    AItem^.Prev^.Next := AItem^.Next;
-
-  if Assigned(AItem^.Next) then
-    AItem^.Next^.Prev := AItem^.Prev;
-
-  FreeMem(AItem, HashTotalSize);
-  ClearCursor();
-
-  AItem := nil;
-end;
-
-
-function TX2CustomHash.GetHashTotalSize;
-begin
-  Result  := FHashItemSize + FHashDataSize;
-end;
-
-
-{================================ TX2Hash
-  Item Management
-========================================}
-constructor TX2Hash.Create;
-begin
-  inherited;
-
-  HashDataSize  := SizeOf(Pointer);
-end;
-
-function TX2Hash.GetItem;
-var
-  pNode:        PX2BTreeNode;
-  pItem:        PX2HashItem;
-
-begin
-  Assert(Length(Key) > 0, RSEmptyKey);
   Result  := nil;
-  pItem   := LookupItem(Key, pNode);
-  if Assigned(pItem) then
-    Result  := PPointer(GetItemData(pItem))^;
+  if not Assigned(FRoot) then
+    if AAllowCreate then
+    begin
+      // Create root bucket
+      GetMem(FRoot, SizeOf(TX2HashBucket));
+      FillChar(FRoot^, SizeOf(TX2HashBucket), #0);
+      FRoot^.ID := HIDBucket;
+    end else
+      exit;
+
+  Result  := InternalFind(FRoot, Hash(AKey, ASize), AKey, ASize,
+                          AAllowCreate);
 end;
 
-procedure TX2Hash.SetItem;
-var
-  pNode:        PX2BTreeNode;
-  pItem:        PX2HashItem;
-
+function TX2CustomHash.Exists(const AKey: Pointer;
+                              const ASize: Cardinal): Boolean;
 begin
-  Assert(Length(Key) > 0, RSEmptyKey);
-  pItem := LookupItem(Key, pNode, True);
-  if Assigned(pItem) then
-    PPointer(GetItemData(pItem))^ := Value;
+  Result  := (Assigned(FRoot) and (Find(AKey, ASize, False) <> nil));
 end;
 
-function TX2Hash.GetCurrentValue;
+function TX2CustomHash.Delete(const AKey: Pointer;
+                              const ASize: Cardinal): Boolean;
+begin
+  Result  := False;
+  if not Assigned(FRoot) then
+    exit;
+
+  Result  := InternalDelete(FRoot, Hash(AKey, ASize), AKey, ASize);
+  if Result then
+    InvalidateCursor();
+end;
+
+
+procedure TX2CustomHash.SetValue(const AValue: PX2HashValue;
+                                 const AData: Pointer);
+begin
+  ValueManager.Finalize(AValue^.Value);
+  AValue^.Value := AData;
+end;
+
+
+
+procedure TX2CustomHash.First();
+begin
+  CursorRequired();
+  Cursor.First();
+end;
+
+function TX2CustomHash.Next(): Boolean;
+begin
+  CursorRequired();
+  Result  := Cursor.Next();
+end;
+
+
+
+{========================================
+  TX2CustomPointerHash
+========================================}
+function TX2CustomPointerHash.CreateKeyManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashPointerManager.Create();
+end;
+
+function TX2CustomPointerHash.GetCurrentKey(): Pointer;
+begin
+  CursorRequired();
+  Result  := TX2HashPointerManager(KeyManager).ToValue(Cursor.Current^.Key);
+end;
+
+function TX2CustomPointerHash.Find(const AKey: Pointer;
+                                   const AAllowCreate: Boolean): PX2HashValue;
+begin
+  Result  := inherited Find(@AKey, SizeOf(Pointer), AAllowCreate);
+end;
+
+function TX2CustomPointerHash.Exists(const AKey: Pointer): Boolean;
+begin
+  Result  := inherited Exists(@AKey, SizeOf(Pointer));
+end;
+
+function TX2CustomPointerHash.Delete(const AKey: Pointer): Boolean;
+begin
+  Result  := inherited Delete(@AKey, SizeOf(Pointer));
+end;
+
+
+{========================================
+  TX2CustomIntegerHash
+========================================}
+function TX2CustomIntegerHash.CreateKeyManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashIntegerManager.Create();
+end;
+
+function TX2CustomIntegerHash.GetCurrentKey(): Integer;
+begin
+  CursorRequired();
+  Result  := TX2HashIntegerManager(KeyManager).ToValue(Cursor.Current^.Key);
+end;
+
+function TX2CustomIntegerHash.Find(const AKey: Integer;
+                                   const AAllowCreate: Boolean): PX2HashValue;
+begin
+  Result  := inherited Find(@AKey, SizeOf(Pointer), AAllowCreate);
+end;
+
+function TX2CustomIntegerHash.Exists(const AKey: Integer): Boolean;
+begin
+  Result  := inherited Exists(@AKey, SizeOf(Pointer));
+end;
+
+function TX2CustomIntegerHash.Delete(const AKey: Integer): Boolean;
+begin
+  Result  := inherited Delete(@AKey, SizeOf(Pointer));
+end;
+
+
+{========================================
+  TX2CustomObjectHash
+========================================}
+function TX2CustomObjectHash.CreateKeyManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashObjectManager.Create();
+end;
+
+function TX2CustomObjectHash.GetCurrentKey(): TObject;
+begin
+  CursorRequired();
+  Result  := TX2HashObjectManager(KeyManager).ToValue(Cursor.Current^.Key);
+end;
+
+function TX2CustomObjectHash.Find(const AKey: TObject;
+                                  const AAllowCreate: Boolean): PX2HashValue;
+begin
+  Result  := inherited Find(@AKey, SizeOf(Pointer), AAllowCreate);
+end;
+
+function TX2CustomObjectHash.Exists(const AKey: TObject): Boolean;
+begin
+  Result  := inherited Exists(@AKey, SizeOf(Pointer));
+end;
+
+function TX2CustomObjectHash.Delete(const AKey: TObject): Boolean;
+begin
+  Result  := inherited Delete(@AKey, SizeOf(Pointer));
+end;
+
+
+{========================================
+  TX2CustomStringHash
+========================================}
+function TX2CustomStringHash.CreateKeyManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashStringManager.Create();
+end;
+
+function TX2CustomStringHash.GetCurrentKey(): String;
+begin
+  CursorRequired();
+  Result  := TX2HashStringManager(KeyManager).ToValue(Cursor.Current^.Key);
+end;
+
+
+function TX2CustomStringHash.Find(const AKey: String;
+                                  const AAllowCreate: Boolean): PX2HashValue;
+begin
+  Result  := inherited Find(PChar(AKey), Length(AKey), AAllowCreate);
+end;
+
+function TX2CustomStringHash.Exists(const AKey: String): Boolean;
+begin
+  Result  := inherited Exists(PChar(AKey), Length(AKey));
+end;
+
+function TX2CustomStringHash.Delete(const AKey: String): Boolean;
+begin
+  Result  := inherited Delete(PChar(AKey), Length(AKey));
+end;
+
+
+{========================================
+  TX2PPHash
+========================================}
+function TX2PPHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashPointerManager.Create();
+end;
+
+function TX2PPHash.GetCurrentValue(): Pointer;
+begin
+  CursorRequired();
+  Result  := TX2HashPointerManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2PPHash.GetValue(Key: Pointer): Pointer;
+var
+  pItem:      PX2HashValue;
+
 begin
   Result  := nil;
-  if ValidCursor() then
-    Result  := PPointer(GetItemData(HashCursor))^;
-end;
-
-
-{========================= TX2IntegerHash
-  Item Management
-========================================}
-function TX2IntegerHash.GetItem;
-begin
-  Result  := Integer(inherited GetItem(Key));
-end;
-
-procedure TX2IntegerHash.SetItem;
-begin
-  inherited SetItem(Key, Pointer(Value));
-end;
-
-function TX2IntegerHash.GetCurrentValue;
-begin
-  Result  := Integer(inherited GetCurrentValue());
-end;
-
-
-{========================== TX2StringHash
-  Item Management
-========================================}
-constructor TX2StringHash.Create;
-begin
-  inherited;
-
-  HashDataSize  := SizeOf(PString);
-end;
-
-function TX2StringHash.GetItem;
-var
-  pNode:        PX2BTreeNode;
-  pItem:        PX2HashItem;
-
-begin
-  Assert(Length(Key) > 0, RSEmptyKey);
-  Result  := '';
-  pItem   := LookupItem(Key, pNode);
+  pItem   := Find(Key, False);
   if Assigned(pItem) then
-    Result  := PString(GetItemData(pItem))^;
+    Result  := TX2HashPointerManager(ValueManager).ToValue(pItem^.Value);
 end;
 
-procedure TX2StringHash.SetItem;
-var
-  pNode:        PX2BTreeNode;
-  pItem:        PX2HashItem;
-
+procedure TX2PPHash.SetValue(Key: Pointer; const Value: Pointer);
 begin
-  Assert(Length(Key) > 0, RSEmptyKey);
-  pItem := LookupItem(Key, pNode, True);
-  if Assigned(pItem) then
-    PString(GetItemData(pItem))^  := Value;
+  inherited SetValue(Find(Key, True),
+                     TX2HashPointerManager(ValueManager).ToPointer(Value));
 end;
 
-
-procedure TX2StringHash.InitHashItem;
-var
-  pData:        PString;
-
-begin
-  inherited;
-
-  pData := GetItemData(AItem);
-  Initialize(pData^);
-end;
-
-procedure TX2StringHash.FreeHashItem;
-var
-  pData:        PString;
-
-begin
-  pData := GetItemData(AItem);
-  Finalize(pData^);
-
-  inherited;
-end;
-
-
-function TX2StringHash.GetCurrentValue;
-begin
-  Result  := '';
-  if ValidCursor() then
-    Result  := PString(GetItemData(HashCursor))^;
-end;
-
-
-{========================== TX2ObjectHash
-  Item Management
+{========================================
+  TX2PIHash
 ========================================}
-constructor TX2ObjectHash.Create();
+function TX2PIHash.CreateValueManager(): TX2CustomHashManager;
 begin
-  inherited;
-
-  FOwnsObjects  := False;
+  Result  := TX2HashIntegerManager.Create();
 end;
 
-constructor TX2ObjectHash.Create(AOwnsObjects: Boolean);
+function TX2PIHash.GetCurrentValue(): Integer;
+begin
+  CursorRequired();
+  Result  := TX2HashIntegerManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2PIHash.GetValue(Key: Pointer): Integer;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := 0;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashIntegerManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2PIHash.SetValue(Key: Pointer; const Value: Integer);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashIntegerManager(ValueManager).ToPointer(Value));
+end;
+
+{========================================
+  TX2POHash
+========================================}
+constructor TX2POHash.Create(const AOwnsObjects: Boolean);
 begin
   inherited Create();
-
-  FOwnsObjects  := AOwnsObjects;
+  OwnsObjects := AOwnsObjects;
 end;
 
-
-function TX2ObjectHash.GetItem;
+function TX2POHash.CreateValueManager(): TX2CustomHashManager;
 begin
-  Result  := TObject(inherited GetItem(Key));
+  Result  := TX2HashObjectManager.Create();
 end;
 
-procedure TX2ObjectHash.SetItem;
+function TX2POHash.GetCurrentValue(): TObject;
 begin
-  inherited SetItem(Key, Pointer(Value));
+  Result  := TX2HashObjectManager(ValueManager).ToValue(Cursor.Current^.Value);
 end;
 
-function TX2ObjectHash.GetCurrentValue;
+function TX2POHash.GetOwnsObjects(): Boolean;
 begin
-  Result  := TObject(inherited GetCurrentValue());
+  Result  := TX2HashObjectManager(ValueManager).OwnsObjects;
 end;
 
-procedure TX2ObjectHash.FreeHashItem;
+procedure TX2POHash.SetOwnsObjects(const Value: Boolean);
+begin
+  TX2HashObjectManager(ValueManager).OwnsObjects  := Value;
+end;
+
+function TX2POHash.GetValue(Key: Pointer): TObject;
 var
-  pObject:      ^TObject;
+  pItem:      PX2HashValue;
 
 begin
-  if FOwnsObjects then
-  begin
-    pObject := GetItemData(AItem);
-
-    if Assigned(pObject) then
-      FreeAndNil(pObject^);
-  end;
-
-  inherited;
+  Result  := nil;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashObjectManager(ValueManager).ToValue(pItem^.Value);
 end;
+
+procedure TX2POHash.SetValue(Key: Pointer; const Value: TObject);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashObjectManager(ValueManager).ToPointer(Value));
+end;
+
+
+{========================================
+  TX2PSHash
+========================================}
+function TX2PSHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashStringManager.Create();
+end;
+
+function TX2PSHash.GetCurrentValue(): String;
+begin
+  Result  := TX2HashStringManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2PSHash.GetValue(Key: Pointer): String;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := '';
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashStringManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2PSHash.SetValue(Key: Pointer; const Value: String);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashStringManager(ValueManager).ToPointer(Value));
+end;
+
+{========================================
+  TX2IPHash
+========================================}
+function TX2IPHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashPointerManager.Create();
+end;
+
+function TX2IPHash.GetCurrentValue(): Pointer;
+begin
+  CursorRequired();
+  Result  := TX2HashPointerManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2IPHash.GetValue(Key: Integer): Pointer;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := nil;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashPointerManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2IPHash.SetValue(Key: Integer; const Value: Pointer);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashPointerManager(ValueManager).ToPointer(Value));
+end;
+
+{========================================
+  TX2IIHash
+========================================}
+function TX2IIHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashIntegerManager.Create();
+end;
+
+function TX2IIHash.GetCurrentValue(): Integer;
+begin
+  CursorRequired();
+  Result  := TX2HashIntegerManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2IIHash.GetValue(Key: Integer): Integer;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := 0;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashIntegerManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2IIHash.SetValue(Key: Integer; const Value: Integer);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashIntegerManager(ValueManager).ToPointer(Value));
+end;
+
+{========================================
+  TX2IOHash
+========================================}
+constructor TX2IOHash.Create(const AOwnsObjects: Boolean);
+begin
+  inherited Create();
+  OwnsObjects := AOwnsObjects;
+end;
+
+function TX2IOHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashObjectManager.Create();
+end;
+
+function TX2IOHash.GetCurrentValue(): TObject;
+begin
+  Result  := TX2HashObjectManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2IOHash.GetOwnsObjects(): Boolean;
+begin
+  Result  := TX2HashObjectManager(ValueManager).OwnsObjects;
+end;
+
+procedure TX2IOHash.SetOwnsObjects(const Value: Boolean);
+begin
+  TX2HashObjectManager(ValueManager).OwnsObjects  := Value;
+end;
+
+function TX2IOHash.GetValue(Key: Integer): TObject;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := nil;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashObjectManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2IOHash.SetValue(Key: Integer; const Value: TObject);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashObjectManager(ValueManager).ToPointer(Value));
+end;
+
+
+{========================================
+  TX2ISHash
+========================================}
+function TX2ISHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashStringManager.Create();
+end;
+
+function TX2ISHash.GetCurrentValue(): String;
+begin
+  Result  := TX2HashStringManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2ISHash.GetValue(Key: Integer): String;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := '';
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashStringManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2ISHash.SetValue(Key: Integer; const Value: String);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashStringManager(ValueManager).ToPointer(Value));
+end;
+
+{========================================
+  TX2OPHash
+========================================}
+function TX2OPHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashPointerManager.Create();
+end;
+
+function TX2OPHash.GetCurrentValue(): Pointer;
+begin
+  CursorRequired();
+  Result  := TX2HashPointerManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2OPHash.GetValue(Key: TObject): Pointer;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := nil;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashPointerManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2OPHash.SetValue(Key: TObject; const Value: Pointer);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashPointerManager(ValueManager).ToPointer(Value));
+end;
+
+{========================================
+  TX2OIHash
+========================================}
+function TX2OIHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashIntegerManager.Create();
+end;
+
+function TX2OIHash.GetCurrentValue(): Integer;
+begin
+  CursorRequired();
+  Result  := TX2HashIntegerManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2OIHash.GetValue(Key: TObject): Integer;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := 0;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashIntegerManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2OIHash.SetValue(Key: TObject; const Value: Integer);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashIntegerManager(ValueManager).ToPointer(Value));
+end;
+
+{========================================
+  TX2OOHash
+========================================}
+constructor TX2OOHash.Create(const AOwnsObjects: Boolean);
+begin
+  inherited Create();
+  OwnsObjects := AOwnsObjects;
+end;
+
+function TX2OOHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashObjectManager.Create();
+end;
+
+function TX2OOHash.GetCurrentValue(): TObject;
+begin
+  Result  := TX2HashObjectManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2OOHash.GetOwnsObjects(): Boolean;
+begin
+  Result  := TX2HashObjectManager(ValueManager).OwnsObjects;
+end;
+
+procedure TX2OOHash.SetOwnsObjects(const Value: Boolean);
+begin
+  TX2HashObjectManager(ValueManager).OwnsObjects  := Value;
+end;
+
+function TX2OOHash.GetValue(Key: TObject): TObject;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := nil;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashObjectManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2OOHash.SetValue(Key: TObject; const Value: TObject);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashObjectManager(ValueManager).ToPointer(Value));
+end;
+
+
+{========================================
+  TX2OSHash
+========================================}
+function TX2OSHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashStringManager.Create();
+end;
+
+function TX2OSHash.GetCurrentValue(): String;
+begin
+  Result  := TX2HashStringManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2OSHash.GetValue(Key: TObject): String;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := '';
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashStringManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2OSHash.SetValue(Key: TObject; const Value: String);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashStringManager(ValueManager).ToPointer(Value));
+end;
+
+{========================================
+  TX2SPHash
+========================================}
+function TX2SPHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashPointerManager.Create();
+end;
+
+function TX2SPHash.GetCurrentValue(): Pointer;
+begin
+  CursorRequired();
+  Result  := TX2HashPointerManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2SPHash.GetValue(Key: String): Pointer;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := nil;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashPointerManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2SPHash.SetValue(Key: String; const Value: Pointer);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashPointerManager(ValueManager).ToPointer(Value));
+end;
+
+{========================================
+  TX2SIHash
+========================================}
+function TX2SIHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashIntegerManager.Create();
+end;
+
+function TX2SIHash.GetCurrentValue(): Integer;
+begin
+  CursorRequired();
+  Result  := TX2HashIntegerManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2SIHash.GetValue(Key: String): Integer;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := 0;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashIntegerManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2SIHash.SetValue(Key: String; const Value: Integer);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashIntegerManager(ValueManager).ToPointer(Value));
+end;
+
+{========================================
+  TX2SOHash
+========================================}
+constructor TX2SOHash.Create(const AOwnsObjects: Boolean);
+begin
+  inherited Create();
+  OwnsObjects := AOwnsObjects;
+end;
+
+function TX2SOHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashObjectManager.Create();
+end;
+
+function TX2SOHash.GetCurrentValue(): TObject;
+begin
+  Result  := TX2HashObjectManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2SOHash.GetOwnsObjects(): Boolean;
+begin
+  Result  := TX2HashObjectManager(ValueManager).OwnsObjects;
+end;
+
+procedure TX2SOHash.SetOwnsObjects(const Value: Boolean);
+begin
+  TX2HashObjectManager(ValueManager).OwnsObjects  := Value;
+end;
+
+function TX2SOHash.GetValue(Key: String): TObject;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := nil;
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashObjectManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2SOHash.SetValue(Key: String; const Value: TObject);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashObjectManager(ValueManager).ToPointer(Value));
+end;
+
+
+{========================================
+  TX2SSHash
+========================================}
+function TX2SSHash.CreateValueManager(): TX2CustomHashManager;
+begin
+  Result  := TX2HashStringManager.Create();
+end;
+
+function TX2SSHash.GetCurrentValue(): String;
+begin
+  Result  := TX2HashStringManager(ValueManager).ToValue(Cursor.Current^.Value);
+end;
+
+function TX2SSHash.GetValue(Key: String): String;
+var
+  pItem:      PX2HashValue;
+
+begin
+  Result  := '';
+  pItem   := Find(Key, False);
+  if Assigned(pItem) then
+    Result  := TX2HashStringManager(ValueManager).ToValue(pItem^.Value);
+end;
+
+procedure TX2SSHash.SetValue(Key: String; const Value: String);
+begin
+  inherited SetValue(Find(Key, True),
+                     TX2HashStringManager(ValueManager).ToPointer(Value));
+end;
+
+initialization
+  CRC32Init();
 
 end.
