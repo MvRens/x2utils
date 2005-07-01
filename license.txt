@@ -1,7 +1,7 @@
 X2Utils is released under the zlib/libpng OSI-approved license.
 For more information: http://www.opensource.org/
 
-Copyright (c) 2003 X2Software
+Copyright (c) 2003-2005 X2Software
 http://www.x2software.net/
 
 This software is provided 'as-is', without any express or implied warranty.
