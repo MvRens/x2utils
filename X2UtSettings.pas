@@ -147,7 +147,7 @@ type
     procedure DeleteSection(); virtual; abstract;
 
     //:$ Deletes the specified value.
-    procedure DeleteValue(const AName: String); virtual; abstract;
+    procedure DeleteValue(const AName: String); virtual;
 
 
     //:$ Validates the specified value using the defined callback method
@@ -163,7 +163,7 @@ type
   }
   TX2SettingsFactory    = class(TObject)
   private
-    FDefines:         TX2ObjectHash;
+    FDefines:         TX2SOHash;
   protected
     function GetSection(const ASection: String): TX2Settings; virtual; abstract;
     function GetDefine(const ASection, AName: String): TX2SettingsDefine; virtual;
@@ -512,6 +512,19 @@ begin
   InternalWriteString(AName, vValue);
 end;
 
+procedure TX2Settings.DeleteValue(const AName: String);
+var
+  pDefine:      TX2SettingsDefine;
+
+begin
+  pDefine := FFactory.GetDefine(FSection, AName);
+  if Assigned(pDefine) then
+  begin
+    pDefine.Cached  := False;
+    pDefine.Value   := Unassigned;
+  end;
+end;
+
 
 function TX2Settings.ValidateValue;
 var
@@ -567,7 +580,7 @@ constructor TX2SettingsFactory.Create;
 begin
   inherited;
 
-  FDefines  := TX2ObjectHash.Create();
+  FDefines  := TX2SOHash.Create(True);
 end;
 
 destructor TX2SettingsFactory.Destroy;

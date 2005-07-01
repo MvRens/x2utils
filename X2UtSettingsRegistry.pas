@@ -266,6 +266,7 @@ end;
 
 procedure TX2RegistrySettings.DeleteValue;
 begin
+  inherited;
   if OpenRead() then
     if FData.ValueExists(AName) then
       FData.DeleteValue(AName);

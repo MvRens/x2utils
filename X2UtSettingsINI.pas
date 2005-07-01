@@ -277,6 +277,7 @@ end;
 
 procedure TX2INISettings.DeleteValue;
 begin
+  inherited;
   FData.DeleteKey(FSection, AName);
 end;
 
