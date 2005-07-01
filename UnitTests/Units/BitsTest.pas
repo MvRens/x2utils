@@ -1,4 +1,4 @@
-unit UBits;
+unit BitsTest;
 
 interface
 uses
@@ -20,7 +20,7 @@ uses
   X2UtBits;
 
 const
-  BitsTest    = [bit1, bit2, bit4, bit7];
+  Bits        = [bit1, bit2, bit4, bit7];
   BitsValue   = 150;
   BitsString  = '10010110';
 
@@ -33,7 +33,7 @@ var
 
 begin
   bValue  := BitsValue;
-  Check(eBits = BitsTest, 'Bits do not match the value!');
+  Check(eBits = Bits, 'Bits do not match the value!');
 end;
 
 procedure TBitsTest.testSet;
@@ -42,7 +42,7 @@ var
   eBits:          T8Bits absolute bValue;
 
 begin
-  eBits   := BitsTest;
+  eBits   := Bits;
   Check(bValue = BitsValue, 'Value does not match the bits!');
 end;
 
@@ -67,7 +67,7 @@ var
   sValue:         String;
 
 begin
-  eBits   := BitsTest;
+  eBits   := Bits;
   sValue  := BitsToString(eBits, bs8);
 
   Check(sValue = BitsString, 'Bits do not match the string!');
@@ -82,7 +82,7 @@ begin
   sValue  := BitsString;
   eBits   := StringToBits(sValue);
 
-  Check(eBits = BitsTest, 'String does not match the bits!');
+  Check(eBits = Bits, 'String does not match the bits!');
 end;
 
 

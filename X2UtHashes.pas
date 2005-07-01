@@ -194,6 +194,8 @@ type
     constructor Create(); virtual;
     destructor Destroy(); override;
 
+    procedure Clear();
+
     procedure First();
     function Next(): Boolean;
 
@@ -713,7 +715,7 @@ end;
 function TX2CustomHashManager.ToPointer(const AValue: Pointer;
                                         const ASize: Cardinal): Pointer;
 begin
-  Result  := Pointer(AValue);
+  Result  := Pointer(AValue^);
 end;
 
 function TX2CustomHashManager.ToValue(const AData: Pointer;
@@ -726,7 +728,7 @@ end;
 function TX2CustomHashManager.Compare(const AData: Pointer; const AValue: Pointer;
                                       const ASize: Cardinal): Boolean;
 begin
-  Result  := (Pointer(AValue) = AData);
+  Result  := (Pointer(AValue^) = AData);
 end;
 
 
@@ -735,7 +737,7 @@ end;
 ========================================}
 function TX2HashPointerManager.ToPointer(const AValue: Pointer): Pointer;
 begin
-  Result  := ToPointer(AValue, SizeOf(Pointer));
+  Result  := ToPointer(@AValue, SizeOf(Pointer));
 end;
 
 function TX2HashPointerManager.ToValue(const AData: Pointer): Pointer;
@@ -749,7 +751,7 @@ end;
 ========================================}
 function TX2HashIntegerManager.ToPointer(const AValue: Integer): Pointer;
 begin
-  Result  := ToPointer(Pointer(AValue), SizeOf(Integer));
+  Result  := ToPointer(@AValue, SizeOf(Integer));
 end;
 
 function TX2HashIntegerManager.ToValue(const AData: Pointer): Integer;
@@ -771,7 +773,7 @@ end;
 
 function TX2HashObjectManager.ToPointer(const AValue: TObject): Pointer;
 begin
-  Result  := ToPointer(Pointer(AValue), SizeOf(Integer));
+  Result  := ToPointer(@AValue, SizeOf(Integer));
 end;
 
 function TX2HashObjectManager.ToValue(const AData: Pointer): TObject;
@@ -871,42 +873,8 @@ begin
 end;
 
 destructor TX2CustomHash.Destroy();
-  procedure DestroyBucket(const ABucket: PX2HashBucket);
-  var
-    iItem:        Integer;
-    pNext:        PX2HashValue;
-    pValue:       PX2HashValue;
-
-  begin
-    for iItem := Pred(LeafSize) downto 0 do
-      if ABucket^.Items[iItem] <> nil then
-        case ABucket^.Items[iItem].ID of
-          HIDBucket:
-            DestroyBucket(PX2HashBucket(ABucket^.Items[iItem]));
-          HIDValue:
-            begin
-              pValue  := PX2HashValue(ABucket^.Items[iItem]);
-              repeat
-                FKeyManager.Finalize(pValue^.Key);
-                FValueManager.Finalize(pValue^.Value);
-
-                pNext   := pValue^.Next;
-                FreeMem(pValue, SizeOf(TX2HashValue));
-                pValue  := pNext;
-              until pValue = nil;
-            end;
-        end;
-
-    FreeMem(ABucket, SizeOf(TX2HashBucket));
-  end;
-
 begin
-  if Assigned(FRoot) then
-  begin
-    DestroyBucket(FRoot);
-    FRoot := nil;
-  end;
-
+  Clear();
   FreeAndNil(FValueManager);
   FreeAndNil(FKeyManager);
   FreeAndNil(FCursor);
@@ -1133,6 +1101,47 @@ begin
   Result  := InternalFind(FRoot, Hash(AKey, ASize), AKey, ASize,
                           AAllowCreate);
 end;
+
+
+procedure TX2CustomHash.Clear();
+  procedure DestroyBucket(const ABucket: PX2HashBucket);
+  var
+    iItem:        Integer;
+    pNext:        PX2HashValue;
+    pValue:       PX2HashValue;
+
+  begin
+    for iItem := Pred(LeafSize) downto 0 do
+      if ABucket^.Items[iItem] <> nil then
+        case ABucket^.Items[iItem].ID of
+          HIDBucket:
+            DestroyBucket(PX2HashBucket(ABucket^.Items[iItem]));
+          HIDValue:
+            begin
+              pValue  := PX2HashValue(ABucket^.Items[iItem]);
+              repeat
+                FKeyManager.Finalize(pValue^.Key);
+                FValueManager.Finalize(pValue^.Value);
+
+                pNext   := pValue^.Next;
+                FreeMem(pValue, SizeOf(TX2HashValue));
+                pValue  := pNext;
+              until pValue = nil;
+            end;
+        end;
+
+    FreeMem(ABucket, SizeOf(TX2HashBucket));
+  end;
+
+begin
+  if FRoot <> nil then
+  begin
+    DestroyBucket(FRoot);
+    FCount  := 0;
+    FRoot   := nil;
+  end;
+end;
+
 
 function TX2CustomHash.Exists(const AKey: Pointer;
                               const ASize: Cardinal): Boolean;

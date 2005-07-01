@@ -1,12 +1,14 @@
 program X2UtUnitTests;
 
 uses
+  MemCheck,
   TestFramework,
   GUITestRunner,
-  UBits in 'Units\UBits.pas',
-  UTrees in 'Units\UTrees.pas';
+  BitsTest in 'Units\BitsTest.pas',
+  HashesTest in 'Units\HashesTest.pas';
 
 begin
+  MemChk();
   RunRegisteredTests();
 end.
  
