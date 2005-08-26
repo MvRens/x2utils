@@ -169,7 +169,7 @@ type
     procedure InvalidateCursor();
 
     function Hash(const AKey: Pointer; const ASize: Cardinal): Cardinal; virtual;
-    procedure CursorRequired();
+    function CursorRequired(const ARaiseException: Boolean = True): Boolean;
 
     function InternalFind(const ABucket: PX2HashBucket;
                           const AHash: Cardinal; const AKey: Pointer;
@@ -257,7 +257,7 @@ type
     :$ Base hash implementation for string keys.
   }
   TX2CustomStringHash = class(TX2CustomHash)
-  private
+  protected
     function GetCurrentKey(): String;
   protected
     function CreateKeyManager(): TX2CustomHashManager; override;
@@ -275,7 +275,7 @@ type
     :$ Pointer-to-Pointer hash.
   }
   TX2PPHash     = class(TX2CustomPointerHash)
-  private
+  protected
     function GetCurrentValue(): Pointer;
     function GetValue(Key: Pointer): Pointer;
     procedure SetValue(Key: Pointer; const Value: Pointer);
@@ -290,7 +290,7 @@ type
     :$ Pointer-to-Integer hash.
   }
   TX2PIHash     = class(TX2CustomPointerHash)
-  private
+  protected
     function GetCurrentValue(): Integer;
     function GetValue(Key: Pointer): Integer;
     procedure SetValue(Key: Pointer; const Value: Integer);
@@ -305,7 +305,7 @@ type
     :$ Pointer-to-Object hash.
   }
   TX2POHash     = class(TX2CustomPointerHash)
-  private
+  protected
     function GetCurrentValue(): TObject;
     function GetOwnsObjects(): Boolean;
     procedure SetOwnsObjects(const Value: Boolean);
@@ -325,7 +325,7 @@ type
     :$ Pointer-to-String hash.
   }
   TX2PSHash     = class(TX2CustomPointerHash)
-  private
+  protected
     function GetCurrentValue(): String;
     function GetValue(Key: Pointer): String;
     procedure SetValue(Key: Pointer; const Value: String);
@@ -340,7 +340,7 @@ type
     :$ Integer-to-Pointer hash.
   }
   TX2IPHash     = class(TX2CustomIntegerHash)
-  private
+  protected
     function GetCurrentValue(): Pointer;
     function GetValue(Key: Integer): Pointer;
     procedure SetValue(Key: Integer; const Value: Pointer);
@@ -355,7 +355,7 @@ type
     :$ Integer-to-Integer hash.
   }
   TX2IIHash     = class(TX2CustomIntegerHash)
-  private
+  protected
     function GetCurrentValue(): Integer;
     function GetValue(Key: Integer): Integer;
     procedure SetValue(Key: Integer; const Value: Integer);
@@ -370,7 +370,7 @@ type
     :$ Integer-to-Object hash.
   }
   TX2IOHash     = class(TX2CustomIntegerHash)
-  private
+  protected
     function GetCurrentValue(): TObject;
     function GetOwnsObjects(): Boolean;
     procedure SetOwnsObjects(const Value: Boolean);
@@ -390,7 +390,7 @@ type
     :$ Integer-to-String hash.
   }
   TX2ISHash     = class(TX2CustomIntegerHash)
-  private
+  protected
     function GetCurrentValue(): String;
     function GetValue(Key: Integer): String;
     procedure SetValue(Key: Integer; const Value: String);
@@ -405,7 +405,7 @@ type
     :$ Object-to-Pointer hash.
   }
   TX2OPHash     = class(TX2CustomObjectHash)
-  private
+  protected
     function GetCurrentValue(): Pointer;
     function GetValue(Key: TObject): Pointer;
     procedure SetValue(Key: TObject; const Value: Pointer);
@@ -420,7 +420,7 @@ type
     :$ Object-to-Integer hash.
   }
   TX2OIHash     = class(TX2CustomObjectHash)
-  private
+  protected
     function GetCurrentValue(): Integer;
     function GetValue(Key: TObject): Integer;
     procedure SetValue(Key: TObject; const Value: Integer);
@@ -435,7 +435,7 @@ type
     :$ Object-to-Object hash.
   }
   TX2OOHash     = class(TX2CustomObjectHash)
-  private
+  protected
     function GetCurrentValue(): TObject;
     function GetOwnsObjects(): Boolean;
     procedure SetOwnsObjects(const Value: Boolean);
@@ -455,7 +455,7 @@ type
     :$ Object-to-String hash.
   }
   TX2OSHash     = class(TX2CustomObjectHash)
-  private
+  protected
     function GetCurrentValue(): String;
     function GetValue(Key: TObject): String;
     procedure SetValue(Key: TObject; const Value: String);
@@ -470,7 +470,7 @@ type
     :$ String-to-Pointer hash.
   }
   TX2SPHash     = class(TX2CustomStringHash)
-  private
+  protected
     function GetCurrentValue(): Pointer;
     function GetValue(Key: String): Pointer;
     procedure SetValue(Key: String; const Value: Pointer);
@@ -485,7 +485,7 @@ type
     :$ String-to-Integer hash.
   }
   TX2SIHash     = class(TX2CustomStringHash)
-  private
+  protected
     function GetCurrentValue(): Integer;
     function GetValue(Key: String): Integer;
     procedure SetValue(Key: String; const Value: Integer);
@@ -500,7 +500,7 @@ type
     :$ String-to-Object hash.
   }
   TX2SOHash     = class(TX2CustomStringHash)
-  private
+  protected
     function GetCurrentValue(): TObject;
     function GetOwnsObjects(): Boolean;
     procedure SetOwnsObjects(const Value: Boolean);
@@ -520,7 +520,7 @@ type
     :$ String-to-String hash.
   }
   TX2SSHash     = class(TX2CustomStringHash)
-  private
+  protected
     function GetCurrentValue(): String;
     function GetValue(Key: String): String;
     procedure SetValue(Key: String; const Value: String);
@@ -908,13 +908,18 @@ begin
   Result  := CRC32(AKey, ASize);
 end;
 
-procedure TX2CustomHash.CursorRequired();
+function TX2CustomHash.CursorRequired(const ARaiseException: Boolean): Boolean;
 begin
+  Result  := True;
   if not Assigned(FCursor) then
     if Assigned(FRoot) then
       FCursor := CreateCursor()
     else
-      raise EX2HashNoCursor.Create('Cursor not available!');
+    begin
+      Result  := False;
+      if ARaiseException then
+        raise EX2HashNoCursor.Create('Cursor not available!');
+    end;
 end;
 
 
@@ -1173,13 +1178,18 @@ end;
 
 procedure TX2CustomHash.First();
 begin
-  CursorRequired();
+  if not CursorRequired(False) then
+    exit;
+
   Cursor.First();
 end;
 
 function TX2CustomHash.Next(): Boolean;
 begin
-  CursorRequired();
+  Result  := False;
+  if not CursorRequired(False) then
+    exit;
+
   Result  := Cursor.Next();
 end;
 

@@ -1,0 +1,49 @@
+package X2Utils;
+
+{$R *.res}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO ON}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST ON}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DESCRIPTION 'X2Utils'}
+{$LIBSUFFIX '70'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  vcl,
+  VirtualTreesD7,
+  vclx;
+
+contains
+  X2UtVirtualTree in '..\..\X2UtVirtualTree.pas',
+  X2UtApp in '..\..\X2UtApp.pas',
+  X2UtBits in '..\..\X2UtBits.pas',
+  X2UtGraphics in '..\..\X2UtGraphics.pas',
+  X2UtHandCursor in '..\..\X2UtHandCursor.pas',
+  X2UtHashes in '..\..\X2UtHashes.pas',
+  X2UtHashesVariants in '..\..\X2UtHashesVariants.pas',
+  X2UtMisc in '..\..\X2UtMisc.pas',
+  X2UtOS in '..\..\X2UtOS.pas',
+  X2UtSingleInstance in '..\..\X2UtSingleInstance.pas',
+  X2UtStrings in '..\..\X2UtStrings.pas';
+
+end.

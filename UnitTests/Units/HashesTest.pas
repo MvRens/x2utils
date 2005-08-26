@@ -3,7 +3,8 @@ unit HashesTest;
 interface
 uses
   TestFramework,
-  X2UtHashes;
+  X2UtHashes,
+  X2UtHashesVariants;
 
 type
   THashesTest = class(TTestCase)
@@ -42,6 +43,21 @@ type
     function GetHash(): TX2POHash;
 
     property Hash:      TX2POHash read GetHash;
+  protected
+    procedure SetUp(); override;
+    procedure FillTestItems(); override;
+  published
+    procedure testSet(); override;
+    procedure testGet(); override;
+    procedure testDelete(); override;
+    procedure testIterate(); override;
+  end;
+
+  THashesVariantTest  = class(THashesTest)
+  private
+    function GetHash(): TX2SVHash;
+
+    property Hash:      TX2SVHash read GetHash;
   protected
     procedure SetUp(); override;
     procedure FillTestItems(); override;
@@ -210,8 +226,76 @@ begin
   Result  := TX2POHash(FHash);
 end;
 
+{ THashesVariantTest }
+procedure THashesVariantTest.SetUp;
+begin
+  inherited;
+
+  FHash := TX2SVHash.Create();
+end;
+
+function THashesVariantTest.GetHash(): TX2SVHash;
+begin
+  Result  := TX2SVHash(FHash);
+end;
+
+procedure THashesVariantTest.FillTestItems;
+begin
+  Hash['Key1']  := 'String';
+  Hash['Key2']  := 5;
+  Hash['Key3']  := 40.4;
+end;
+
+procedure THashesVariantTest.testSet;
+begin
+  FillTestItems();
+  CheckEquals(3, Hash.Count);
+end;
+
+procedure THashesVariantTest.testGet;
+begin
+  FillTestItems();
+  CheckTrue(Hash['Key1'] = 'String');
+  CheckTrue(Hash['Key2'] = 5);
+  CheckTrue(Hash['Key3'] = 40.4);
+end;
+
+procedure THashesVariantTest.testDelete;
+begin
+  FillTestItems();
+  Hash.Delete('Key2');
+
+  CheckEquals(2, Hash.Count);
+  CheckTrue(Hash.Exists('Key1'), 'Key1 does not exist!');
+  CheckFalse(Hash.Exists('Key2'), 'Key2 still exists!');
+  CheckTrue(Hash.Exists('Key3'), 'Key3 does not exist!');
+end;
+
+procedure THashesVariantTest.testIterate;
+var
+  aPresent:     array[0..2] of Boolean;
+
+begin
+  FillTestItems();
+  FillChar(aPresent, SizeOf(aPresent), #0);
+  Hash.First();
+  while Hash.Next() do
+    if ((Hash.CurrentKey = 'Key1') and (Hash.CurrentValue = 'String')) then
+      aPresent[0] := True
+    else if ((Hash.CurrentKey = 'Key2') and (Hash.CurrentValue = 5)) then
+      aPresent[1] := True
+    else if ((Hash.CurrentKey = 'Key3') and (Hash.CurrentValue = 40.4)) then
+      aPresent[2] := True;
+
+  CheckTrue(aPresent[0], 'Key1 was not in the iteration!');
+  CheckTrue(aPresent[1], 'Key2 was not in the iteration!');
+  CheckTrue(aPresent[2], 'Key3 was not in the iteration!');
+end;
+
+
 initialization
   RegisterTest('Hashes', THashesSITest.Suite);
   RegisterTest('Hashes', THashesPOTest.Suite);
+  RegisterTest('Hashes', THashesVariantTest.Suite);
 
 end.

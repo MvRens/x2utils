@@ -3,6 +3,8 @@
   :: Include one of the extensions (X2UtSettingsINI, X2UtSettingsRegistry) for
   :: an implementation.
   ::
+  :: X2UtSettings is deprecated, and replaced by X2UtConfig.
+  ::
   :: Last changed:    $Date$
   :: Revision:        $Rev$
   :: Author:          $Author$
@@ -153,7 +155,7 @@ type
     //:$ Validates the specified value using the defined callback method
     //:$ if present.
     function ValidateValue(const AName: String; const AValue: Variant): Variant;
-  end;
+  end deprecated;
 
   {
     :$ Settings factory.
@@ -184,7 +186,7 @@ type
     //:: callback method to perform centralized checks.
     procedure Define(const ASection, AName: String; const AValue: Variant;
                      const ACallback: TX2SettingsCallback = nil);
-  end;
+  end deprecated;
 
 
 implementation

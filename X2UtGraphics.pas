@@ -57,6 +57,16 @@ uses
   function BlendColors(const ABackground, AForeground: TColor;
                        const AAlpha: Byte): TColor;
 
+  {
+    :$ Darkens a color with the specified value
+  }
+  function DarkenColor(const AColor: TColor; const AValue: Byte): TColor;
+
+  {
+    :$ Lightens a color with the specified value
+  }
+  function LightenColor(const AColor: TColor; const AValue: Byte): TColor;
+
 
 implementation
 uses
@@ -74,7 +84,7 @@ type
   THackControl  = class(TControl);
 
 
-procedure AAFont;
+procedure AAFont(const AFont: TFont);
 var
   pFont:      TLogFont;
   hAAFont:    HFONT;
@@ -114,7 +124,7 @@ begin
   AFont.Handle  := hAAFont;
 end;
 
-procedure AAControl;
+procedure AAControl(const AControl: TControl);
 var
   pControl:     THackControl;
 
@@ -123,7 +133,8 @@ begin
   AAFont(pControl.Font);
 end;
 
-procedure AAChildren;
+procedure AAChildren(const AParent: TWinControl;
+                     const ARecursive: Boolean = False);
 var
   iControl:       Integer;
 
@@ -137,7 +148,7 @@ begin
   end;
 end;
 
-procedure AAOwned;
+procedure AAOwned(const AOwner: TComponent);
 var
   iControl:       Integer;
 
@@ -148,7 +159,8 @@ begin
 end;
 
 
-function BlendColors;
+function BlendColors(const ABackground, AForeground: TColor;
+                     const AAlpha: Byte): TColor;
 var
   cBack:        Cardinal;
   cFore:        Cardinal;
@@ -165,6 +177,55 @@ begin
                   (GetGValue(cFore) * AAlpha)) shr 8,
                  ((GetBValue(cBack) * bBack) +
                   (GetBValue(cFore) * AAlpha)) shr 8);
+end;
+
+
+function DarkenColor(const AColor: TColor; const AValue: Byte): TColor;
+var
+  cColor:     Cardinal;
+  iRed:       Integer;
+  iGreen:     Integer;
+  iBlue:      Integer;
+
+begin
+  cColor  := ColorToRGB(AColor);
+  iRed    := (cColor and $FF0000) shr 16;;
+  iGreen  := (cColor and $00FF00) shr 8;
+  iBlue   := cColor and $0000FF;
+
+  Dec(iRed, AValue);
+  Dec(iGreen, AValue);
+  Dec(iBlue, AValue);
+
+  if iRed   < 0 then iRed   := 0;
+  if iGreen < 0 then iGreen := 0;
+  if iBlue  < 0 then iBlue  := 0;
+
+  Result  := (iRed shl 16) + (iGreen shl 8) + iBlue;
+end;
+
+function LightenColor(const AColor: TColor; const AValue: Byte): TColor;
+var
+  cColor:     Cardinal;
+  iRed:       Integer;
+  iGreen:     Integer;
+  iBlue:      Integer;
+
+begin
+  cColor  := ColorToRGB(AColor);
+  iRed    := (cColor and $FF0000) shr 16;;
+  iGreen  := (cColor and $00FF00) shr 8;
+  iBlue   := cColor and $0000FF;
+
+  Inc(iRed, AValue);
+  Inc(iGreen, AValue);
+  Inc(iBlue, AValue);
+
+  if iRed   > 255 then iRed   := 255;
+  if iGreen > 255 then iGreen := 255;
+  if iBlue  > 255 then iBlue  := 255;
+
+  Result  := (iRed shl 16) + (iGreen shl 8) + iBlue;
 end;
 
 end.
