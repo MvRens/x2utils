@@ -131,8 +131,9 @@ type
   private
     FVersion:         TX2AppVersion;
     FPath:            String;
+    FMainPath:        String;
   protected
-    function GetModule(): String; virtual;
+    function GetModule(const AModule: THandle): String; virtual;
     procedure GetPath(); virtual;
     procedure GetVersion(); virtual;
   public
@@ -146,11 +147,18 @@ type
     function FormatVersion(const ABuild: Boolean = True;
                            const AProductName: Boolean = False): String;
 
+    //:$ Contains the path to the current module
+    //:! In DLL's and BPL's, this points to the path of the current library.
+    //:! Note that for packages using X2Utils.bpl, this will point to the path
+    //:! of X2Utils.bpl, not the calling package! If you want the main
+    //:! executable's path, use the MainPath property.
+    property Path:      String          read FPath;
+
     //:$ Contains the path to the application's executable
     //:! This path in unaffected by the working directory which may be
     //:! specified in the shortcut launching the application. A trailing
     //:! slash is included in the path.
-    property Path:      String          read FPath;
+    property MainPath:  String          read FMainPath;
 
     //:$ Contains the application's version information
     property Version:   TX2AppVersion   read FVersion;
@@ -267,24 +275,25 @@ end;
 {================================= TX2App
   Path
 ========================================}
-function TX2App.GetModule;
+function TX2App.GetModule(const AModule: THandle): String;
 var
   cModule:  array[0..MAX_PATH] of Char;
 
 begin
   FillChar(cModule, SizeOf(cModule), #0);
-  GetModuleFileName(hInstance, @cModule, SizeOf(cModule));
+  GetModuleFileName(AModule, @cModule, SizeOf(cModule));
   Result  := String(cModule);
 end;
 
 
 procedure TX2App.GetPath;
 begin
-  {$IFDEF D6}
-  FPath   := IncludeTrailingPathDelimiter(ExtractFilePath(GetModule()));
-  {$ELSE}
-  FPath   := IncludeTrailingBackslash(ExtractFilePath(GetModule()));
-  {$ENDIF}
+  FPath     := {$IFDEF D6}IncludeTrailingPathDelimiter
+               {$ELSE}IncludeTrailingBackslash{$ENDIF}
+               (ExtractFilePath(GetModule(SysInit.HInstance)));
+  FMainPath := {$IFDEF D6}IncludeTrailingPathDelimiter
+               {$ELSE}IncludeTrailingBackslash{$ENDIF}
+               (ExtractFilePath(GetModule(0)));
 end;
 
 
@@ -339,7 +348,7 @@ begin
     Build   := 0;
   end;
 
-  pFile := PChar(GetModule());
+  pFile := PChar(GetModule(SysInit.HInstance));
   dSize := GetFileVersionInfoSize(pFile, dTemp);
 
   if dSize <> 0 then begin
