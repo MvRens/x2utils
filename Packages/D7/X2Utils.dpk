@@ -31,7 +31,9 @@ requires
   rtl,
   vcl,
   VirtualTreesD7,
-  vclx;
+  vclx,
+  indy,
+  xmlrtl;
 
 contains
   X2UtVirtualTree in '..\..\X2UtVirtualTree.pas',
@@ -44,6 +46,7 @@ contains
   X2UtMisc in '..\..\X2UtMisc.pas',
   X2UtOS in '..\..\X2UtOS.pas',
   X2UtSingleInstance in '..\..\X2UtSingleInstance.pas',
-  X2UtStrings in '..\..\X2UtStrings.pas';
+  X2UtStrings in '..\..\X2UtStrings.pas',
+  X2UtInetVersion in '..\..\X2UtInetVersion.pas';
 
 end.

@@ -91,7 +91,7 @@ ImageBase=4194304
 ExeDescription=X2Utils
 [Directories]
 OutputDir=
-UnitOutputDir=
+UnitOutputDir=..\..\Lib\D7
 PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=
@@ -138,7 +138,13 @@ Count=2
 Item0=..\..
 Item1=F:\Development\VDarts\Packages
 [HistoryLists\hlUnitOutputDirectory]
+Count=4
+Item0=..\..\Lib\D7
+Item1=..\..\Dcu
+Item2=..\..\..\Dcu
+Item3=Dcu
+[HistoryLists\hlBPLOutput]
 Count=3
-Item0=..\..\Dcu
-Item1=..\..\..\Dcu
-Item2=Dcu
+Item0=..\..\Lib\D7
+Item1=Lib\D7
+Item2=..\Lib\D7

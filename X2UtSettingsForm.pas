@@ -18,11 +18,18 @@ uses
                          const ASection: String; const AForm: TCustomForm);
 
 implementation
+uses
+  MultiMon,
+  Windows;
+
 type
   THackCustomForm = class(TCustomForm);
 
 procedure ReadFormPos(const AFactory: TX2SettingsFactory;
                       const ASection: String; const AForm: TCustomForm);
+var
+  rBounds:      TRect;
+
 begin
   with AFactory[ASection] do
   try
@@ -30,13 +37,20 @@ begin
     begin
       if ReadBool('Maximized', (AForm.WindowState = wsMaximized)) then
         AForm.WindowState := wsMaximized
-      else with THackCustomForm(AForm) do begin
-        WindowState       := wsNormal;
-        Position          := poDesigned;
-        Left              := ReadInteger('Left', Left);
-        Top               := ReadInteger('Top', Top);
-        Width             := ReadInteger('Width', Width);
-        Height            := ReadInteger('Height', Height);
+      else with THackCustomForm(AForm) do
+      begin
+        rBounds.Left      := ReadInteger('Left', Left);
+        rBounds.Top       := ReadInteger('Top', Top);
+        rBounds.Right     := rBounds.Left + ReadInteger('Width', Width);
+        rBounds.Bottom    := rBounds.Top + ReadInteger('Height', Height);
+
+        // Make sure the window is at least partially visible
+        if MonitorFromRect(@rBounds, MONITOR_DEFAULTTONULL) <> 0 then
+        begin
+          WindowState       := wsNormal;
+          Position          := poDesigned;
+          BoundsRect        := rBounds;
+        end;
       end;
     end;
   finally
