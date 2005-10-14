@@ -610,12 +610,10 @@ end;
 procedure TX2HashCursor.First();
 begin
   if Length(FBucketPath) > 1 then
-  begin
     SetLength(FBucketPath, 1);
-    FBucketPath[0].Index  := 0;
-  end;
 
-  FCurrent  := nil;
+  FBucketPath[0].Index  := 0;
+  FCurrent              := nil;
 end;
 
 function TX2HashCursor.Next(): Boolean;

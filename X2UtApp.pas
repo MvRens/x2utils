@@ -132,6 +132,7 @@ type
     FVersion:         TX2AppVersion;
     FPath:            String;
     FMainPath:        String;
+    FUserPath:        String;
   protected
     function GetModule(const AModule: THandle): String; virtual;
     procedure GetPath(); virtual;
@@ -160,6 +161,9 @@ type
     //:! slash is included in the path.
     property MainPath:  String          read FMainPath;
 
+    //:$ Contains the path to the user's Application Data
+    property UserPath:  String          read FUserPath;
+
     //:$ Contains the application's version information
     property Version:   TX2AppVersion   read FVersion;
   end;
@@ -169,6 +173,8 @@ type
 
 implementation
 uses
+  ActiveX,
+  ShlObj,
   SysUtils,
   TypInfo,
   Windows;
@@ -286,14 +292,33 @@ begin
 end;
 
 
-procedure TX2App.GetPath;
+procedure TX2App.GetPath();
+  function FixPath(const APath: String): String;
+  begin
+    Result  := {$IFDEF D6}IncludeTrailingPathDelimiter
+               {$ELSE}IncludeTrailingBackslash{$ENDIF}
+               (APath);
+  end;
+
+var
+  ifMalloc:       IMalloc;
+  pIDL:           PItemIDList;
+  cPath:          array[0..MAX_PATH] of Char;
+
 begin
-  FPath     := {$IFDEF D6}IncludeTrailingPathDelimiter
-               {$ELSE}IncludeTrailingBackslash{$ENDIF}
-               (ExtractFilePath(GetModule(SysInit.HInstance)));
-  FMainPath := {$IFDEF D6}IncludeTrailingPathDelimiter
-               {$ELSE}IncludeTrailingBackslash{$ENDIF}
-               (ExtractFilePath(GetModule(0)));
+  FPath     := FixPath(ExtractFilePath(GetModule(SysInit.HInstance)));
+  FMainPath := FixPath(ExtractFilePath(GetModule(0)));
+
+  SHGetMalloc(ifMalloc);
+  try
+    FillChar(cPath, SizeOf(cPath), #0);
+    SHGetSpecialFolderLocation(0, CSIDL_APPDATA, pIDL);
+    SHGetPathFromIDList(pIDL, @cPath);
+
+    FUserPath := FixPath(cPath);
+  finally
+    ifMalloc  := nil;
+  end;
 end;
 
 
