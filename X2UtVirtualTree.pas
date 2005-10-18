@@ -43,7 +43,11 @@ begin
       with Columns[SortColumn] do
         if Tag <> 0 then
         begin
-          Color := TColor(Tag);
+          if Tag = clNone then
+            Options := Options + [coParentColor]
+          else
+            Color := Tag;
+
           Tag   := 0;
         end;
 
@@ -58,7 +62,11 @@ begin
     if ASortColor <> clNone then
       with Columns[SortColumn] do
       begin
-        Tag   := Color;
+        if coParentColor in Options then
+          Tag   := clNone
+        else
+          Tag   := Color;
+
         Color := ASortColor;
       end;
   end;
