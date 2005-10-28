@@ -13,6 +13,7 @@ interface
 uses
   Classes,
 
+  IdHTTP,
   IdHTTPHeaderInfo,
   XMLIntf;
   
@@ -21,17 +22,20 @@ type
 
   TX2InetVersionInfo  = class(TCollectionItem)
   private
+    FBuild:                 Integer;
     FMajor:                 Integer;
     FMinor:                 Integer;
-    FRelease:               Integer;
-    FBuild:                 Integer;
     FNewer:                 Boolean;
+    FRelease:               Integer;
     FVersionType:           TX2InetVersionType;
     FVersionTypeString:     String;
-    FWhatsNewTemp:          String;
+    FWhatsNew:              TStrings;
   protected
     procedure LoadFromNode(const ANode: IXMLNode);
   public
+    constructor Create(Collection: TCollection); override;
+    destructor Destroy(); override;
+
     property VersionType:       TX2InetVersionType  read FVersionType;
     property VersionTypeString: String              read FVersionTypeString;
     property Major:             Integer             read FMajor;
@@ -39,7 +43,7 @@ type
     property Release:           Integer             read FRelease;
     property Build:             Integer             read FBuild;
     property Newer:             Boolean             read FNewer;
-    property WhatsNewTemp:      String              read FWhatsNewTemp;
+    property WhatsNew:          TStrings            read FWhatsNew;
   end;
 
   TX2InetVersions     = class(TCollection)
@@ -60,6 +64,7 @@ type
     FAppID:             String;
     FURL:               String;
     FProxyParams:       TIdProxyConnectionInfo;
+    FHTTP:              TIdHTTP;
 
     FApplicationURL:    String;
     FVersions:          TX2InetVersions;
@@ -68,6 +73,9 @@ type
   public
     constructor Create();
     destructor Destroy(); override;
+
+    procedure Terminate();
+    
 
     property AppID:             String                  read FAppID write FAppID;
     property URL:               String                  read FURL   write FURL;
@@ -84,11 +92,25 @@ uses
   XMLDoc,
 
   IdURI,
-  IdHTTP,
   X2UtApp;
 
 
 { TX2InetVersionInfo }
+constructor TX2InetVersionInfo.Create(Collection: TCollection);
+begin
+  inherited;
+
+  FWhatsNew := TStringList.Create();
+end;
+
+destructor TX2InetVersionInfo.Destroy();
+begin
+  FreeAndNil(FWhatsNew);
+
+  inherited;
+end;
+
+
 procedure TX2InetVersionInfo.LoadFromNode(const ANode: IXMLNode);
   function GetVersion(const AName: String): Integer;
   var
@@ -127,7 +149,6 @@ begin
                ((FMajor = Major) and (FMinor = Minor) and (FRelease > Release)) or
                ((FMajor = Major) and (FMinor = Minor) and (FRelease = Release) and (FBuild > Build));
 
-  FWhatsNewTemp := '';
   xmlWhatsNew   := ANode.ChildNodes.FindNode('whatsnew');
   if Assigned(xmlWhatsNew) then
   begin
@@ -135,9 +156,7 @@ begin
     while Assigned(xmlItem) do
     begin
       if xmlItem.NodeName = 'item' then
-      begin
-        FWhatsNewTemp := FWhatsNewTemp + '- ' + xmlItem.Text + #13#10;
-      end;
+        FWhatsNew.Add(xmlItem.Text);
 
       xmlItem := xmlItem.NextSibling();
     end;
@@ -189,7 +208,6 @@ end;
 
 procedure TX2InetVersion.Execute();
 var
-  idHTTP:       TIdHTTP;
   memData:      TMemoryStream;
   xmlDoc:       IXMLDocument;
   xmlRoot:      IXMLNode;
@@ -199,18 +217,24 @@ var
 begin
   CoInitialize(nil);
 
-  idHTTP  := TIdHTTP.Create(nil);
+  FHTTP := TIdHTTP.Create(nil);
   try
-    idHTTP.ProxyParams.Assign(FProxyParams);
+    FHTTP.ProxyParams.Assign(FProxyParams);
     memData := TMemoryStream.Create();
     try
-      idHTTP.Get(Format('%s?appid=%s', [FURL, TIdURI.ParamsEncode(FAppID)]), memData);
+      FHTTP.Get(Format('%s?appid=%s', [FURL, TIdURI.ParamsEncode(FAppID)]), memData);
       memData.Seek(0, soFromBeginning);
+
+      if Terminated then
+        exit;
 
       xmlDoc  := TXMLDocument.Create(nil);
       try
         xmlDoc.LoadFromStream(memData);
         xmlRoot := xmlDoc.DocumentElement;
+
+        if Terminated then
+          exit;
 
         if xmlRoot.NodeName <> 'application' then
           exit;
@@ -234,8 +258,17 @@ begin
       FreeAndNil(memData);
     end;
   finally
-    FreeAndNil(idHTTP);
+    FreeAndNil(FHTTP);
   end;
+end;
+
+
+procedure TX2InetVersion.Terminate();
+begin
+  inherited Terminate();
+
+  if Assigned(FHTTP) then
+    FHTTP.Disconnect();
 end;
 
 end.
