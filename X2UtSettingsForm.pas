@@ -69,7 +69,7 @@ begin
     WriteBool('Maximized', (AForm.WindowState = wsMaximized));
 
     pPlacement.length := SizeOf(TWindowPlacement);
-    if GetWindowPlacement(AForm.Handle, @pPlacement) <> 0 then
+    if GetWindowPlacement(AForm.Handle, @pPlacement) then
       with pPlacement.rcNormalPosition do
       begin
         WriteInteger('Left', Left);
