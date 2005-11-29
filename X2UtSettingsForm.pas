@@ -60,16 +60,22 @@ end;
 
 procedure WriteFormPos(const AFactory: TX2SettingsFactory;
                        const ASection: String; const AForm: TCustomForm);
+var
+  pPlacement:     TWindowPlacement;
+
 begin
   with AFactory[ASection] do
   try
     WriteBool('Maximized', (AForm.WindowState = wsMaximized));
-    if AForm.WindowState <> wsMaximized then
-      with THackCustomForm(AForm) do begin
+
+    pPlacement.length := SizeOf(TWindowPlacement);
+    if GetWindowPlacement(AForm.Handle, @pPlacement) <> 0 then
+      with pPlacement.rcNormalPosition do
+      begin
         WriteInteger('Left', Left);
         WriteInteger('Top', Top);
-        WriteInteger('Width', Width);
-        WriteInteger('Height', Height);
+        WriteInteger('Width', Right - Left);
+        WriteInteger('Height', Bottom - Top);
       end;
   finally
     Free();
