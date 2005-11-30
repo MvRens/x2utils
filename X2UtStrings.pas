@@ -17,9 +17,12 @@ type
    * @param AKeepBytes  if true, only decimal separators will be added and
    *                    the text 'bytes' appended. If False, a suitable unit
    *                    will be chosen (KB, MB, GB).
+   * @param AFormat     the format used for the output, see the Delphi Help for
+   *                    FormatFloat.
    * @result            the formatted size.
   *}
-  function FormatSize(const ABytes: Int64; AKeepBytes: Boolean = False): String;
+  function FormatSize(const ABytes: Int64; AKeepBytes: Boolean = False;
+                      const AFormat = ',0.##'): String;
 
   {** Compares two strings without case sensitivity.
    *
@@ -122,7 +125,8 @@ uses
   SysUtils,
   Windows;
 
-function FormatSize(const ABytes: Int64; AKeepBytes: Boolean = False): String;
+function FormatSize(const ABytes: Int64; AKeepBytes: Boolean;
+                    const AFormat: String): String;
 const
   KB  = 1024;
   MB  = KB * 1024;
@@ -151,7 +155,7 @@ begin
       sExt  := ' GB';
     end;
 
-  Result  := FormatFloat(',0.##', dSize) + sExt;
+  Result  := FormatFloat(AFormat, dSize) + sExt;
 end;
 
 function CompareTextL(const AMatch, AAgainst: String;
