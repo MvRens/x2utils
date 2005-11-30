@@ -22,7 +22,7 @@ type
    * @result            the formatted size.
   *}
   function FormatSize(const ABytes: Int64; AKeepBytes: Boolean = False;
-                      const AFormat = ',0.##'): String;
+                      const AFormat: String = ',0.##'): String;
 
   {** Compares two strings without case sensitivity.
    *
