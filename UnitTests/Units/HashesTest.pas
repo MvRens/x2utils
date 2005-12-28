@@ -19,6 +19,7 @@ type
     procedure testClear();
     procedure testDelete(); virtual; abstract;
     procedure testIterate(); virtual; abstract;
+    procedure testEnumerator(); virtual; abstract;
   end;
 
   // Two test cases involving all value managers.
@@ -36,6 +37,7 @@ type
     procedure testGet(); override;
     procedure testDelete(); override;
     procedure testIterate(); override;
+    procedure testEnumerator(); override;
   end;
 
   THashesPOTest = class(THashesTest)
@@ -51,6 +53,7 @@ type
     procedure testGet(); override;
     procedure testDelete(); override;
     procedure testIterate(); override;
+    procedure testEnumerator(); override;
   end;
 
   THashesVariantTest  = class(THashesTest)
@@ -66,6 +69,7 @@ type
     procedure testGet(); override;
     procedure testDelete(); override;
     procedure testIterate(); override;
+    procedure testEnumerator(); override;
   end;
 
 implementation
@@ -135,6 +139,40 @@ begin
   CheckTrue(Hash.Exists('Key3'), 'Key3 does not exist!');
 end;
 
+procedure THashesSITest.testEnumerator;
+var
+  aPresent:     array[1..3] of Boolean;
+  sKey:         String;
+
+begin
+  FillTestItems();
+  FillChar(aPresent, SizeOf(aPresent), #0);
+
+  for sKey in Hash do
+  begin
+    if sKey = 'Key1' then
+      aPresent[1] := True
+    else if sKey = 'Key2' then
+      aPresent[2] := True
+    else if sKey = 'Key3' then
+      aPresent[3] := True;
+  end;
+
+  CheckTrue(aPresent[1], 'Key1 was not in the enumeration!');
+  CheckTrue(aPresent[2], 'Key2 was not in the enumeration!');
+  CheckTrue(aPresent[3], 'Key3 was not in the enumeration!');
+
+  { Not supported yet, maybe in the future.
+  FillChar(aPresent, SizeOf(aPresent), #0);
+  for iValue in Hash.Values do
+    aPresent[iValue]  := True;
+
+  CheckTrue(aPresent[1], 'Value of Key1 was not in the enumeration!');
+  CheckTrue(aPresent[2], 'Value of Key2 was not in the enumeration!');
+  CheckTrue(aPresent[3], 'Value of Key3 was not in the enumeration!');
+  }
+end;
+
 procedure THashesSITest.testIterate;
 var
   aPresent:     array[1..3] of Boolean;
@@ -199,6 +237,23 @@ begin
   CheckTrue(Hash.Exists(Pointer(0)), 'Key1 does not exist!');
   CheckFalse(Hash.Exists(Pointer(1)), 'Key2 still exists!');
   CheckTrue(Hash.Exists(Pointer(2)), 'Key3 does not exist!');
+end;
+
+procedure THashesPOTest.testEnumerator;
+var
+  aPresent:     array[0..2] of Boolean;
+  pKey:         Pointer;
+
+begin
+  FillTestItems();
+  FillChar(aPresent, SizeOf(aPresent), #0);
+
+  for pKey in Hash do
+    aPresent[Integer(pKey)] := True;
+
+  CheckTrue(aPresent[0], 'Key1 was not in the enumeration!');
+  CheckTrue(aPresent[1], 'Key2 was not in the enumeration!');
+  CheckTrue(aPresent[2], 'Key3 was not in the enumeration!');
 end;
 
 procedure THashesPOTest.testIterate;
@@ -269,6 +324,11 @@ begin
   CheckTrue(Hash.Exists('Key1'), 'Key1 does not exist!');
   CheckFalse(Hash.Exists('Key2'), 'Key2 still exists!');
   CheckTrue(Hash.Exists('Key3'), 'Key3 does not exist!');
+end;
+
+procedure THashesVariantTest.testEnumerator;
+begin
+  Check(True, 'Not implemented yet.');
 end;
 
 procedure THashesVariantTest.testIterate;

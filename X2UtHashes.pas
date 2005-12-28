@@ -14,6 +14,11 @@
   :: For example; TX2SOHash indicates that it uses String keys to identify
   :: Object values.
   ::
+  :: As of Delphi 2006, all default hashes support the for...in structure.
+  :: To enumerate all keys, use "for x in Hash". As of yet, there is no
+  :: direct support for value enumeration yet; you can use
+  :: First/Next/CurrentValue for that.
+  ::
   :: Last changed:    $Date$
   :: Revision:        $Rev$
   :: Author:          $Author$
@@ -35,6 +40,10 @@ type
   //:$ Raised when the cursor is not available
   EX2HashNoCursor = class(Exception);
 
+  // Forward declarations
+  TX2CustomHash   = class;
+
+  {$REGION 'Internal hash structures'}
   {
     :$ Internal representation of a hash item.
   }
@@ -83,12 +92,14 @@ type
 
     property Current:       PX2HashValue  read GetCurrent;
   end;
+  {$ENDREGION}
 
+  {$REGION 'Internal value managers'}
   {
     :$ Base value manager.
   }
   TX2CustomHashManager  = class(TObject)
-  public
+  protected
     procedure Initialize(var AData: Pointer); virtual;
     procedure Finalize(var AData: Pointer); virtual;
 
@@ -103,7 +114,7 @@ type
   end;
 
   TX2HashPointerManager = class(TX2CustomHashManager)
-  public
+  protected
     function ToPointer(const AValue: Pointer): Pointer; overload;
     function ToValue(const AData: Pointer): Pointer; overload;
   end;
@@ -112,7 +123,7 @@ type
     :$ Integer value class.
   }
   TX2HashIntegerManager = class(TX2CustomHashManager)
-  public
+  protected
     function ToPointer(const AValue: Integer): Pointer; overload;
     function ToValue(const AData: Pointer): Integer; overload;
   end;
@@ -123,7 +134,7 @@ type
   TX2HashObjectManager  = class(TX2CustomHashManager)
   private
     FOwnsObjects:     Boolean;
-  public
+  protected
     procedure Finalize(var AData: Pointer); override;
 
     function ToPointer(const AValue: TObject): Pointer; overload;
@@ -136,7 +147,7 @@ type
     :$ String value class.
   }
   TX2HashStringManager  = class(TX2CustomHashManager)
-  public
+  protected
     procedure Finalize(var AData: Pointer); override;
 
     function DataSize(const AData: Pointer): Cardinal; override;
@@ -150,7 +161,72 @@ type
     function Compare(const AData: Pointer; const AValue: Pointer;
                      const ASize: Cardinal): Boolean; override;
   end;
+  {$ENDREGION}
 
+  {$REGION 'Delphi 2006 enumerator support'}
+  {
+    :$ Base enumerator class.
+  }
+  TX2HashEnumerator         = class(TObject)
+  private
+    FCursor:      TX2HashCursor;
+    FManager:     TX2CustomHashManager;
+    FEnumKeys:    Boolean;
+
+    function GetCursor(): Pointer;
+  protected
+    property Manager:   TX2CustomHashManager  read FManager;
+    property Cursor:    Pointer               read GetCursor;
+  public
+    constructor Create(const AHash: TX2CustomHash;
+                       const AEnumKeys: Boolean);
+    destructor Destroy(); override;
+
+    function MoveNext(): Boolean;
+  end;
+
+  {
+    :$ Enumerator for pointer values.
+  }
+  TX2HashPointerEnumerator  = class(TX2HashEnumerator)
+  private
+    function GetCurrent: Pointer;
+  public
+    property Current:     Pointer read GetCurrent;
+  end;
+
+  {
+    :$ Enumerator for integer values.
+  }
+  TX2HashIntegerEnumerator  = class(TX2HashEnumerator)
+  private
+    function GetCurrent: Integer;
+  public
+    property Current:     Integer read GetCurrent;
+  end;
+
+  {
+    :$ Enumerator for object values.
+  }
+  TX2HashObjectEnumerator   = class(TX2HashEnumerator)
+  private
+    function GetCurrent: TObject;
+  public
+    property Current:     TObject read GetCurrent;
+  end;
+
+  {
+    :$ Enumerator for string values
+  }
+  TX2HashStringEnumerator   = class(TX2HashEnumerator)
+  private
+    function GetCurrent(): String;
+  public
+    property Current:     String  read GetCurrent;
+  end;
+  {$ENDREGION}
+
+  {$REGION 'Abstract hash implementation'}
   {
     :$ Hash implementation.
   }
@@ -162,6 +238,9 @@ type
     FCursor:            TX2HashCursor;
     FKeyManager:        TX2CustomHashManager;
     FValueManager:      TX2CustomHashManager;
+
+    FKeys:              TObject;
+    FValues:            TObject;
   protected
     function CreateCursor(): TX2HashCursor; virtual;
     function CreateKeyManager(): TX2CustomHashManager; virtual; abstract;
@@ -201,7 +280,9 @@ type
 
     property Count:     Integer read FCount;
   end;
+  {$ENDREGION}
 
+  {$REGION 'Base hash classes'}
   {
     :$ Base hash implementation for pointer keys.
   }
@@ -213,6 +294,8 @@ type
     function Find(const AKey: Pointer;
                   const AAllowCreate: Boolean): PX2HashValue; overload;
   public
+    function GetEnumerator(): TX2HashPointerEnumerator;
+
     function Exists(const AKey: Pointer): Boolean; overload;
     function Delete(const AKey: Pointer): Boolean; overload;
 
@@ -230,6 +313,8 @@ type
     function Find(const AKey: Integer;
                   const AAllowCreate: Boolean): PX2HashValue; overload;
   public
+    function GetEnumerator(): TX2HashIntegerEnumerator;
+
     function Exists(const AKey: Integer): Boolean; overload;
     function Delete(const AKey: Integer): Boolean; overload;
 
@@ -247,6 +332,8 @@ type
     function Find(const AKey: TObject;
                   const AAllowCreate: Boolean): PX2HashValue; overload;
   public
+    function GetEnumerator(): TX2HashObjectEnumerator;
+
     function Exists(const AKey: TObject): Boolean; overload;
     function Delete(const AKey: TObject): Boolean; overload;
 
@@ -264,13 +351,16 @@ type
     function Find(const AKey: String;
                   const AAllowCreate: Boolean): PX2HashValue; overload;
   public
+    function GetEnumerator(): TX2HashStringEnumerator;
+
     function Exists(const AKey: String): Boolean; overload;
     function Delete(const AKey: String): Boolean; overload;
 
     property CurrentKey:      String  read GetCurrentKey;
   end;
+  {$ENDREGION}
 
-
+  {$REGION 'Concrete hash classes'}
   {
     :$ Pointer-to-Pointer hash.
   }
@@ -530,6 +620,7 @@ type
     property CurrentValue:            String  read GetCurrentValue;
     property Values[Key: String]:     String  read GetValue write SetValue; default;
   end;
+  {$ENDREGION}
 
 implementation
 const
@@ -584,6 +675,7 @@ begin
 end;
 
 
+{$REGION 'Internal hash structures'}
 {========================================
   TX2HashCursor
 ========================================}
@@ -685,8 +777,10 @@ begin
         break;
   until False;
 end;
+{$ENDREGION}
 
 
+{$REGION 'Internal value managers'}
 {========================================
   TX2CustomHashManager
 ========================================}
@@ -857,8 +951,10 @@ begin
 
   Result  := CompareMem(pSource, AValue, ASize);
 end;
+{$ENDREGION}
 
 
+{$REGION 'Abstract hash implementation'}
 {========================== TX2CustomHash
   Initialization
 ========================================}
@@ -883,7 +979,9 @@ end;
 
 function TX2CustomHash.CreateCursor(): TX2HashCursor;
 begin
-  Result  := TX2HashCursor.Create(FRoot);
+  Result  := nil;
+  if Assigned(FRoot) then
+    Result  := TX2HashCursor.Create(FRoot);
 end;
 
 procedure TX2CustomHash.InvalidateCursor();
@@ -1190,9 +1288,77 @@ begin
 
   Result  := Cursor.Next();
 end;
+{$ENDREGION}
 
 
+{$REGION 'Delphi 2006 enumerator support'}
+{========================================
+  TX2HashEnumerator
+========================================}
+constructor TX2HashEnumerator.Create(const AHash: TX2CustomHash;
+                                     const AEnumKeys: Boolean);
+begin
+  inherited Create();
 
+  FEnumKeys := AEnumKeys;
+  if AEnumKeys then
+    FManager  := AHash.KeyManager
+  else
+    FManager  := AHash.ValueManager;
+
+  FCursor   := AHash.CreateCursor();
+end;
+
+destructor TX2HashEnumerator.Destroy();
+begin
+  FreeAndNil(FCursor);
+
+  inherited;
+end;
+
+function TX2HashEnumerator.GetCursor(): Pointer;
+begin
+  if FEnumKeys then
+    Result  := FCursor.Current^.Key
+  else
+    Result  := FCursor.Current^.Value;
+end;
+
+function TX2HashEnumerator.MoveNext(): Boolean;
+begin
+  Result  := False;
+  if Assigned(FCursor) then
+    Result  := FCursor.Next();
+end;
+
+
+{ TX2HashPointerEnumerator }
+function TX2HashPointerEnumerator.GetCurrent(): Pointer;
+begin
+  Result  := TX2HashPointerManager(Manager).ToValue(Cursor);
+end;
+
+{ TX2HashIntegerEnumerator }
+function TX2HashIntegerEnumerator.GetCurrent(): Integer;
+begin
+  Result  := TX2HashIntegerManager(Manager).ToValue(Cursor);
+end;
+
+{ TX2HashObjectEnumerator }
+function TX2HashObjectEnumerator.GetCurrent(): TObject;
+begin
+  Result  := TX2HashObjectManager(Manager).ToValue(Cursor);
+end;
+
+{ TX2HashStringEnumerator }
+function TX2HashStringEnumerator.GetCurrent(): String;
+begin
+  Result  := TX2HashStringManager(Manager).ToValue(Cursor);
+end;
+{$ENDREGION}
+
+
+{$REGION 'Base hash classes'}
 {========================================
   TX2CustomPointerHash
 ========================================}
@@ -1205,6 +1371,11 @@ function TX2CustomPointerHash.GetCurrentKey(): Pointer;
 begin
   CursorRequired();
   Result  := TX2HashPointerManager(KeyManager).ToValue(Cursor.Current^.Key);
+end;
+
+function TX2CustomPointerHash.GetEnumerator(): TX2HashPointerEnumerator;
+begin
+  Result  := TX2HashPointerEnumerator.Create(Self, True);
 end;
 
 function TX2CustomPointerHash.Find(const AKey: Pointer;
@@ -1238,6 +1409,11 @@ begin
   Result  := TX2HashIntegerManager(KeyManager).ToValue(Cursor.Current^.Key);
 end;
 
+function TX2CustomIntegerHash.GetEnumerator(): TX2HashIntegerEnumerator;
+begin
+  Result  := TX2HashIntegerEnumerator.Create(Self, True);
+end;
+
 function TX2CustomIntegerHash.Find(const AKey: Integer;
                                    const AAllowCreate: Boolean): PX2HashValue;
 begin
@@ -1267,6 +1443,11 @@ function TX2CustomObjectHash.GetCurrentKey(): TObject;
 begin
   CursorRequired();
   Result  := TX2HashObjectManager(KeyManager).ToValue(Cursor.Current^.Key);
+end;
+
+function TX2CustomObjectHash.GetEnumerator(): TX2HashObjectEnumerator;
+begin
+  Result  := TX2HashObjectEnumerator.Create(Self, True);
 end;
 
 function TX2CustomObjectHash.Find(const AKey: TObject;
@@ -1301,6 +1482,11 @@ begin
 end;
 
 
+function TX2CustomStringHash.GetEnumerator(): TX2HashStringEnumerator;
+begin
+  Result  := TX2HashStringEnumerator.Create(Self, True);
+end;
+
 function TX2CustomStringHash.Find(const AKey: String;
                                   const AAllowCreate: Boolean): PX2HashValue;
 begin
@@ -1316,8 +1502,10 @@ function TX2CustomStringHash.Delete(const AKey: String): Boolean;
 begin
   Result  := inherited Delete(PChar(AKey), Length(AKey));
 end;
+{$ENDREGION}
 
 
+{$REGION 'Concrete hash classes'}
 {========================================
   TX2PPHash
 ========================================}
@@ -1873,6 +2061,8 @@ begin
   inherited SetValue(Find(Key, True),
                      TX2HashStringManager(ValueManager).ToPointer(Value));
 end;
+{$ENDREGION}
+
 
 initialization
   CRC32Init();

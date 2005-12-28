@@ -155,7 +155,7 @@ type
     //:$ Validates the specified value using the defined callback method
     //:$ if present.
     function ValidateValue(const AName: String; const AValue: Variant): Variant;
-  end deprecated;
+  end;
 
   {
     :$ Settings factory.
@@ -173,6 +173,8 @@ type
     constructor Create();
     destructor Destroy(); override;
 
+    procedure ResetCache();
+
     //:$ Loads a section from the settings.
     //:: Sub-sections are indicated by seperating the sections with a dot ('.')
     //:: characters, ex: Sub.Section. The underlying extension will translate
@@ -186,7 +188,7 @@ type
     //:: callback method to perform centralized checks.
     procedure Define(const ASection, AName: String; const AValue: Variant;
                      const ACallback: TX2SettingsCallback = nil);
-  end deprecated;
+  end;
 
 
 implementation
@@ -653,6 +655,13 @@ procedure TX2SettingsDefine.Action(const AAction: TX2SettingsAction;
 begin
   if Assigned(FCallback) then
     FCallback(AAction, ASection, AName, AValue);
+end;
+
+procedure TX2SettingsFactory.ResetCache();
+begin
+  FDefines.First();
+  while FDefines.Next() do
+    TX2SettingsDefine(FDefines.CurrentValue).Cached := False;
 end;
 
 end.

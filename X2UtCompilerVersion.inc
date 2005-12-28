@@ -2,6 +2,33 @@
 // being used...
 {$DEFINE DUNKNOWN}
 
+{$IFDEF VER180}
+  {$DEFINE D2006}
+  {$DEFINE D2005}
+  {$DEFINE D8}
+  {$DEFINE D7}
+  {$DEFINE D6}
+  {$DEFINE D5}
+  {$DEFINE D4}
+  {$DEFINE D3}
+  {$DEFINE D2}
+  {$DEFINE D1}
+  {$UNDEF DUNKNOWN}
+{$ENDIF}
+
+{$IFDEF VER170}
+  {$DEFINE D2005}
+  {$DEFINE D8}
+  {$DEFINE D7}
+  {$DEFINE D6}
+  {$DEFINE D5}
+  {$DEFINE D4}
+  {$DEFINE D3}
+  {$DEFINE D2}
+  {$DEFINE D1}
+  {$UNDEF DUNKNOWN}
+{$ENDIF}
+
 {$IFDEF VER160}
   {$DEFINE D8}
   {$DEFINE D7}
@@ -75,6 +102,8 @@
 // so I don't know what defines they have... if you do know,
 // feel free to send me any changes...
 {$IFDEF DUNKNOWN}
+  {$DEFINE D2006}
+  {$DEFINE D2005}
   {$DEFINE D8}
   {$DEFINE D7}
   {$DEFINE D6}
