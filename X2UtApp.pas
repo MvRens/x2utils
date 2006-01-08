@@ -87,9 +87,18 @@ type
     FSpecial:         Boolean;
     FPrivate:         Boolean;
     FStrings:         TX2AppVersionStrings;
+  protected
+    procedure GetVersion(const AFileName: String); virtual;
   public
-    constructor Create();
+    constructor Create(const AFileName: String);
     destructor Destroy(); override;
+
+    //:$ Returns the formatted version information
+    //:: If ABuild is False, the return value will not include the
+    //:: application's Build number. If AProductName is True, the
+    //:: product name will be included as well.
+    function FormatVersion(const ABuild: Boolean = True;
+                           const AProductName: Boolean = False): String;
 
     //:$ Contains the application's Major version
     //:! Defaults to 0 if no version information is available
@@ -130,13 +139,13 @@ type
   TX2App  = class(TObject)
   private
     FVersion:         TX2AppVersion;
+    FFileName:        String;
     FPath:            String;
     FMainPath:        String;
     FUserPath:        String;
   protected
     function GetModule(const AModule: THandle): String; virtual;
     procedure GetPath(); virtual;
-    procedure GetVersion(); virtual;
   public
     constructor Create();
     destructor Destroy(); override;
@@ -147,6 +156,13 @@ type
     //:: product name will be included as well.
     function FormatVersion(const ABuild: Boolean = True;
                            const AProductName: Boolean = False): String;
+
+    //:$ Contains the filename of the current module
+    //:! In DLL's and BPL's, this points to the filename of the current library.
+    //:! Note that for packages using X2Utils.bpl, this will point to the path
+    //:! of X2Utils.bpl, not the calling package! If you want the main
+    //:! executable's path, use the MainPath property.
+    property FileName:  String          read FFileName;
 
     //:$ Contains the path to the current module
     //:! In DLL's and BPL's, this points to the path of the current library.
@@ -242,11 +258,12 @@ end;
 {========================== TX2AppVersion
   Initialization
 ========================================}
-constructor TX2AppVersion.Create;
+constructor TX2AppVersion.Create(const AFileName: String);
 begin
-  inherited;
+  inherited Create();
 
   FStrings  := TX2AppVersionStrings.Create();
+  GetVersion(AFileName);
 end;
 
 destructor TX2AppVersion.Destroy;
@@ -257,20 +274,115 @@ begin
 end;
 
 
+function TX2AppVersion.FormatVersion(const ABuild,
+                                     AProductName: Boolean): String;
+var
+  sBuild:     String;
+
+begin
+  sBuild    := '';
+
+  if ABuild then
+    sBuild  := Format(' build %d', [Build]);
+
+  Result    := '';
+  if AProductName then
+    Result  := Strings.ProductName + ' ';
+
+  Result := Result + Format('v%d.%d.%d%s', [Major, Minor, Release, sBuild]);
+end;
+
+procedure TX2AppVersion.GetVersion(const AFileName: String);
+type
+  PLongInt  = ^LongInt;
+
+var
+  pInfo:    PVSFixedFileInfo;
+  dInfo:    Cardinal;
+  dSize:    Cardinal;
+  dVer:     Cardinal;
+  dTemp:    Cardinal;
+  pBuffer:  PChar;
+  pFile:    PChar;
+  iCount:   Integer;
+  iSize:    Integer;
+  iProp:    Integer;
+  pProps:   PPropList;
+  pCode:    PLongInt;
+  pValue:   PChar;
+  aCode:    array[0..1] of Word;
+  cName:    array[0..25] of Char;
+
+begin
+  Major   := 0;
+  Minor   := 0;
+  Release := 0;
+  Build   := 0;
+
+  pFile := PChar(AFileName);
+  dSize := GetFileVersionInfoSize(pFile, dTemp);
+
+  if dSize <> 0 then begin
+    GetMem(pBuffer, dSize);
+
+    try
+      if GetFileVersionInfo(pFile, dTemp, dSize, pBuffer) then
+        // Get version numbers
+        if VerQueryValue(pBuffer, '\', Pointer(pInfo), dInfo) then begin
+          Major       := HiWord(pInfo^.dwFileVersionMS);
+          Minor       := LoWord(pInfo^.dwFileVersionMS);
+          Release     := HiWord(pInfo^.dwFileVersionLS);
+          Build       := LoWord(pInfo^.dwFileVersionLS);
+          Debug       := ((pInfo^.dwFileFlags and VS_FF_DEBUG) = VS_FF_DEBUG);
+          Prerelease  := ((pInfo^.dwFileFlags and VS_FF_PRERELEASE) = VS_FF_PRERELEASE);
+          Special     := ((pInfo^.dwFileFlags and VS_FF_SPECIALBUILD) = VS_FF_SPECIALBUILD);
+          Private     := ((pInfo^.dwFileFlags and VS_FF_PRIVATEBUILD) = VS_FF_PRIVATEBUILD);
+        end;
+
+        // Get additional version information using RTTI
+        VerQueryValue(pBuffer, '\VarFileInfo\Translation', Pointer(pCode), dVer);
+        if dVer <> 0 then begin
+          aCode[0]  := HiWord(pCode^);
+          aCode[1]  := LoWord(pCode^);
+
+          FillChar(cName, SizeOf(cName), #0);
+          wvsprintf(cName, '\StringFileInfo\%8.8lx', @aCode);
+
+          iCount  := GetPropList(Strings.ClassInfo, tkStrings, nil);
+          iSize   := iCount * SizeOf(TPropInfo);
+          GetMem(pProps, iSize);
+
+          try
+            GetPropList(Strings.ClassInfo, tkStrings, pProps);
+
+            for iProp := 0 to iCount - 1 do begin
+              if VerQueryValue(pBuffer, PChar(cName + '\' + pProps^[iProp]^.Name),
+                               Pointer(pValue), dVer) then
+                SetStrProp(Strings, pProps[iProp], pValue);
+            end;
+          finally
+            FreeMem(pProps, iSize);
+          end;
+        end;
+    finally
+      FreeMem(pBuffer, dSize);
+    end;
+  end;
+end;
+
+
 {================================= TX2App
   Initialization
 ========================================}
-constructor TX2App.Create;
+constructor TX2App.Create();
 begin
   inherited;
 
-  FVersion  := TX2AppVersion.Create();
-
   GetPath();
-  GetVersion();
+  FVersion  := TX2AppVersion.Create(FFileName);
 end;
 
-destructor TX2App.Destroy;
+destructor TX2App.Destroy();
 begin
   FreeAndNil(FVersion);
 
@@ -306,7 +418,8 @@ var
   cPath:          array[0..MAX_PATH] of Char;
 
 begin
-  FPath     := FixPath(ExtractFilePath(GetModule(SysInit.HInstance)));
+  FFileName := GetModule(SysInit.HInstance);
+  FPath     := FixPath(ExtractFilePath(FFileName));
   FMainPath := FixPath(ExtractFilePath(GetModule(0)));
 
   SHGetMalloc(ifMalloc);
@@ -325,105 +438,10 @@ end;
 {================================= TX2App
   Version
 ========================================}
-function TX2App.FormatVersion;
-var
-  sBuild:     String;
-
+function TX2App.FormatVersion(const ABuild: Boolean = True;
+                              const AProductName: Boolean = False): String;
 begin
-  sBuild    := '';
-
-  if ABuild then
-    sBuild  := Format(' build %d', [FVersion.Build]);
-
-  Result    := '';
-  if AProductName then
-    Result  := FVersion.Strings.ProductName + ' ';
-
-  with FVersion do
-    Result := Result + Format('v%d.%d.%d%s', [Major, Minor, Release, sBuild]);
-end;
-
-
-procedure TX2App.GetVersion;
-type
-  PLongInt  = ^LongInt;
-
-var
-  pInfo:    PVSFixedFileInfo;
-  dInfo:    Cardinal;
-  dSize:    Cardinal;
-  dVer:     Cardinal;
-  dTemp:    Cardinal;
-  pBuffer:  PChar;
-  pFile:    PChar;
-  iCount:   Integer;
-  iSize:    Integer;
-  iProp:    Integer;
-  pProps:   PPropList;
-  pCode:    PLongInt;
-  pValue:   PChar;
-  aCode:    array[0..1] of Word;
-  cName:    array[0..25] of Char;
-
-begin
-  with FVersion do begin
-    Major   := 0;
-    Minor   := 0;
-    Release := 0;
-    Build   := 0;
-  end;
-
-  pFile := PChar(GetModule(SysInit.HInstance));
-  dSize := GetFileVersionInfoSize(pFile, dTemp);
-
-  if dSize <> 0 then begin
-    GetMem(pBuffer, dSize);
-
-    try
-      if GetFileVersionInfo(pFile, dTemp, dSize, pBuffer) then
-        // Get version numbers
-        with FVersion do begin
-          if VerQueryValue(pBuffer, '\', Pointer(pInfo), dInfo) then begin
-            Major       := HiWord(pInfo^.dwFileVersionMS);
-            Minor       := LoWord(pInfo^.dwFileVersionMS);
-            Release     := HiWord(pInfo^.dwFileVersionLS);
-            Build       := LoWord(pInfo^.dwFileVersionLS);
-            Debug       := ((pInfo^.dwFileFlags and VS_FF_DEBUG) = VS_FF_DEBUG);
-            Prerelease  := ((pInfo^.dwFileFlags and VS_FF_PRERELEASE) = VS_FF_PRERELEASE);
-            Special     := ((pInfo^.dwFileFlags and VS_FF_SPECIALBUILD) = VS_FF_SPECIALBUILD);
-            Private     := ((pInfo^.dwFileFlags and VS_FF_PRIVATEBUILD) = VS_FF_PRIVATEBUILD);
-          end;
-
-          // Get additional version information using RTTI
-          VerQueryValue(pBuffer, '\VarFileInfo\Translation', Pointer(pCode), dVer);
-          if dVer <> 0 then begin
-            aCode[0]  := HiWord(pCode^);
-            aCode[1]  := LoWord(pCode^);
-            
-            FillChar(cName, SizeOf(cName), #0);
-            wvsprintf(cName, '\StringFileInfo\%8.8lx', @aCode);
-
-            iCount  := GetPropList(FVersion.Strings.ClassInfo, tkStrings, nil);
-            iSize   := iCount * SizeOf(TPropInfo);
-            GetMem(pProps, iSize);
-
-            try
-              GetPropList(FVersion.Strings.ClassInfo, tkStrings, pProps);
-
-              for iProp := 0 to iCount - 1 do begin
-                if VerQueryValue(pBuffer, PChar(cName + '\' + pProps^[iProp]^.Name),
-                                 Pointer(pValue), dVer) then
-                  SetStrProp(FVersion.Strings, pProps[iProp], pValue);
-              end;
-            finally
-              FreeMem(pProps, iSize);
-            end;
-          end;
-        end;
-    finally
-      FreeMem(pBuffer, dSize);
-    end;
-  end;
+  Result  := FVersion.FormatVersion(ABuild, AProductName);
 end;
 
 
