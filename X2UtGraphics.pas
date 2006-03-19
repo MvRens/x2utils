@@ -164,19 +164,28 @@ function BlendColors(const ABackground, AForeground: TColor;
 var
   cBack:        Cardinal;
   cFore:        Cardinal;
-  bBack:        Byte;
+  iBack:        Integer;
+  iFore:        Integer;
 
 begin
-  cBack   := ColorToRGB(ABackground);
-  cFore   := ColorToRGB(AForeground);
-  bBack   := 255 - AAlpha;
+  if AAlpha = 0 then
+    Result  := ABackground
+  else if AAlpha = 255 then
+    Result  := AForeground
+  else
+  begin
+    cBack   := ColorToRGB(ABackground);
+    cFore   := ColorToRGB(AForeground);
+    iBack   := 256 - AAlpha;
+    iFore   := Succ(AAlpha);
 
-  Result  := RGB(((GetRValue(cBack) * bBack) +
-                  (GetRValue(cFore) * AAlpha)) shr 8,
-                 ((GetGValue(cBack) * bBack) +
-                  (GetGValue(cFore) * AAlpha)) shr 8,
-                 ((GetBValue(cBack) * bBack) +
-                  (GetBValue(cFore) * AAlpha)) shr 8);
+    Result  := RGB(((GetRValue(cBack) * iBack) +
+                    (GetRValue(cFore) * iFore)) shr 8,
+                   ((GetGValue(cBack) * iBack) +
+                    (GetGValue(cFore) * iFore)) shr 8,
+                   ((GetBValue(cBack) * iBack) +
+                    (GetBValue(cFore) * iFore)) shr 8);
+  end;
 end;
 
 
