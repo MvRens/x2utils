@@ -7,10 +7,14 @@
 unit X2UtStrings;
 
 interface
-type
-  //** Array of string values.
-  TSplitArray = array of String;
+uses
+  Types;
 
+type
+  {** Backwards compatibility }
+  TSplitArray = TStringDynArray;
+  
+  
   {** Formats the specified size.
    *
    * @param ABytes      the size to format in bytes.
@@ -74,7 +78,7 @@ type
    * @todo              though optimized, it now fails on #0 characters, need
    *                    to determine the end by checking the AnsiString length.
   *}
-  procedure Split(const ASource, ADelimiter: String; out ADest: TSplitArray);
+  procedure Split(const ASource, ADelimiter: String; out ADest: TStringDynArray);
 
   {** Appends string parts with a specified glue value.
    *
@@ -82,7 +86,7 @@ type
    * @param AGlue       the string added between the parts
    * @result            the composed parts
   *}
-  function Join(const ASource: TSplitArray; const AGlue: String): String;
+  function Join(const ASource: TStringDynArray; const AGlue: String): String;
 
   {** Determines if one path is the child of another path.
    *
@@ -196,7 +200,7 @@ begin
 end;
 
 
-procedure Split(const ASource, ADelimiter: String; out ADest: TSplitArray);
+procedure Split(const ASource, ADelimiter: String; out ADest: TStringDynArray);
   // StrPos is slow. Sloooooow slow. This function may not be advanced or
   // the fastest one around, but it sure kicks StrPos' ass.
   // 11.5 vs 1.7 seconds on a 2.4 Ghz for 10.000 iterations, baby!
@@ -317,7 +321,7 @@ begin
   until False;
 end;
 
-function Join(const ASource: TSplitArray; const AGlue: String): String;
+function Join(const ASource: TStringDynArray; const AGlue: String): String;
 var
   iGlue:          Integer;
   iHigh:          Integer;
