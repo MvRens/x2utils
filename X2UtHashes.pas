@@ -238,9 +238,6 @@ type
     FCursor:            TX2HashCursor;
     FKeyManager:        TX2CustomHashManager;
     FValueManager:      TX2CustomHashManager;
-
-    FKeys:              TObject;
-    FValues:            TObject;
   protected
     function CreateCursor(): TX2HashCursor; virtual;
     function CreateKeyManager(): TX2CustomHashManager; virtual; abstract;

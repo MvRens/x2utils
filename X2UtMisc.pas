@@ -10,10 +10,12 @@ unit X2UtMisc;
 
 interface
   //:$ Returns IfTrue or IfFalse depending on the Value
-  function iif(const AValue: Boolean; const AIfTrue, AIfFalse: Integer): Integer; overload;
+  function iif(const AValue: Boolean; const AIfTrue: Integer;
+               const AIfFalse: Integer = 0): Integer; overload;
 
   //:$ Returns IfTrue or IfFalse depending on the Value
-  function iif(const AValue: Boolean; const AIfTrue, AIfFalse: String): String; overload;
+  function iif(const AValue: Boolean; const AIfTrue: String;
+               const AIfFalse: String = ''): String; overload;
 
   //:$ Compares two integers
   //:: Returns 0 if the values are equal, 1 if Value1 is greater than Value2 and

@@ -177,7 +177,7 @@ begin
     cBack   := ColorToRGB(ABackground);
     cFore   := ColorToRGB(AForeground);
     iBack   := 256 - AAlpha;
-    iFore   := Succ(AAlpha);
+    iFore   := AAlpha;
 
     Result  := RGB(((GetRValue(cBack) * iBack) +
                     (GetRValue(cFore) * iFore)) shr 8,

@@ -94,8 +94,10 @@ var
   continue:       Boolean;
 
 begin
-  Result  := True;
-  
+  Result  := (AObject.ClassInfo <> nil);
+  if not Result then
+    Exit;
+
   { Iterate through published properties }
   propCount := GetPropList(AObject.ClassInfo, tkProperties, nil);
   if propCount > 0 then
