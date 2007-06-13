@@ -1,5 +1,7 @@
 unit HashesTest;
 
+{$I X2UtCompilerVersion.inc}
+
 interface
 uses
   TestFramework,
@@ -145,6 +147,7 @@ var
   sKey:         String;
 
 begin
+  {$IFDEF D2006}
   FillTestItems();
   FillChar(aPresent, SizeOf(aPresent), #0);
 
@@ -161,6 +164,7 @@ begin
   CheckTrue(aPresent[1], 'Key1 was not in the enumeration!');
   CheckTrue(aPresent[2], 'Key2 was not in the enumeration!');
   CheckTrue(aPresent[3], 'Key3 was not in the enumeration!');
+  {$ENDIF}
 
   { Not supported yet, maybe in the future.
   FillChar(aPresent, SizeOf(aPresent), #0);
@@ -245,6 +249,7 @@ var
   pKey:         Pointer;
 
 begin
+  {$IFDEF D2006}
   FillTestItems();
   FillChar(aPresent, SizeOf(aPresent), #0);
 
@@ -254,6 +259,7 @@ begin
   CheckTrue(aPresent[0], 'Key1 was not in the enumeration!');
   CheckTrue(aPresent[1], 'Key2 was not in the enumeration!');
   CheckTrue(aPresent[2], 'Key3 was not in the enumeration!');
+  {$ENDIF}
 end;
 
 procedure THashesPOTest.testIterate;

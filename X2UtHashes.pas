@@ -25,6 +25,8 @@
 }
 unit X2UtHashes;
 
+{$I X2UtCompilerVersion.inc}
+
 interface
 uses
   Classes,
@@ -43,7 +45,10 @@ type
   // Forward declarations
   TX2CustomHash   = class;
 
+
+  {$IFDEF D2005}
   {$REGION 'Internal hash structures'}
+  {$ENDIF}
   {
     :$ Internal representation of a hash item.
   }
@@ -92,9 +97,11 @@ type
 
     property Current:       PX2HashValue  read GetCurrent;
   end;
+  {$IFDEF D2005}
   {$ENDREGION}
 
   {$REGION 'Internal value managers'}
+  {$ENDIF}
   {
     :$ Base value manager.
   }
@@ -161,9 +168,11 @@ type
     function Compare(const AData: Pointer; const AValue: Pointer;
                      const ASize: Cardinal): Boolean; override;
   end;
+  {$IFDEF D2005}
   {$ENDREGION}
 
   {$REGION 'Delphi 2006 enumerator support'}
+  {$ENDIF}
   {
     :$ Base enumerator class.
   }
@@ -224,9 +233,11 @@ type
   public
     property Current:     String  read GetCurrent;
   end;
+  {$IFDEF D2005}
   {$ENDREGION}
 
   {$REGION 'Abstract hash implementation'}
+  {$ENDIF}
   {
     :$ Hash implementation.
   }
@@ -277,9 +288,11 @@ type
 
     property Count:     Integer read FCount;
   end;
+  {$IFDEF D2005}
   {$ENDREGION}
 
   {$REGION 'Base hash classes'}
+  {$ENDIF}
   {
     :$ Base hash implementation for pointer keys.
   }
@@ -355,9 +368,11 @@ type
 
     property CurrentKey:      String  read GetCurrentKey;
   end;
+  {$IFDEF D2005}
   {$ENDREGION}
 
   {$REGION 'Concrete hash classes'}
+  {$ENDIF}
   {
     :$ Pointer-to-Pointer hash.
   }
@@ -617,7 +632,9 @@ type
     property CurrentValue:            String  read GetCurrentValue;
     property Values[Key: String]:     String  read GetValue write SetValue; default;
   end;
+  {$IFDEF D2005}
   {$ENDREGION}
+  {$ENDIF}
 
 implementation
 const
@@ -672,7 +689,9 @@ begin
 end;
 
 
+{$IFDEF D2005}
 {$REGION 'Internal hash structures'}
+{$ENDIF}
 {========================================
   TX2HashCursor
 ========================================}
@@ -774,10 +793,12 @@ begin
         break;
   until False;
 end;
+{$IFDEF D2005}
 {$ENDREGION}
 
 
 {$REGION 'Internal value managers'}
+{$ENDIF}
 {========================================
   TX2CustomHashManager
 ========================================}
@@ -948,10 +969,12 @@ begin
 
   Result  := CompareMem(pSource, AValue, ASize);
 end;
+{$IFDEF D2005}
 {$ENDREGION}
 
 
 {$REGION 'Abstract hash implementation'}
+{$ENDIF}
 {========================== TX2CustomHash
   Initialization
 ========================================}
@@ -1285,10 +1308,12 @@ begin
 
   Result  := Cursor.Next();
 end;
+{$IFDEF D2005}
 {$ENDREGION}
 
 
 {$REGION 'Delphi 2006 enumerator support'}
+{$ENDIF}
 {========================================
   TX2HashEnumerator
 ========================================}
@@ -1352,10 +1377,12 @@ function TX2HashStringEnumerator.GetCurrent(): String;
 begin
   Result  := TX2HashStringManager(Manager).ToValue(Cursor);
 end;
+{$IFDEF D2005}
 {$ENDREGION}
 
 
 {$REGION 'Base hash classes'}
+{$ENDIF}
 {========================================
   TX2CustomPointerHash
 ========================================}
@@ -1499,10 +1526,12 @@ function TX2CustomStringHash.Delete(const AKey: String): Boolean;
 begin
   Result  := inherited Delete(PChar(AKey), Length(AKey));
 end;
+{$IFDEF D2005}
 {$ENDREGION}
 
 
 {$REGION 'Concrete hash classes'}
+{$ENDIF}
 {========================================
   TX2PPHash
 ========================================}
@@ -2058,7 +2087,9 @@ begin
   inherited SetValue(Find(Key, True),
                      TX2HashStringManager(ValueManager).ToPointer(Value));
 end;
+{$IFDEF D2005}
 {$ENDREGION}
+{$ENDIF}
 
 
 initialization

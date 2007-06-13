@@ -94,7 +94,7 @@ OutputDir=
 UnitOutputDir=
 PackageDLLOutputDir=
 PackageDCPOutputDir=
-SearchPath=
+SearchPath=..
 Packages=vcl;rtl;dbrtl;vcldb;vclx;dss;dsnapcrba;dsnapcon;inetdb;webdsnap;websnap;dbxcds;Irc;parsdpk;hotspotter
 Conditionals=
 DebugSourceDirs=
@@ -105,6 +105,10 @@ HostApplication=
 Launcher=
 UseLauncher=0
 DebugCWD=
+[Language]
+ActiveLang=
+ProjectLang=
+RootDir=
 [Version Info]
 IncludeVerInfo=0
 AutoIncBuild=0
@@ -130,6 +134,11 @@ OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
 Comments=
+[Excluded Packages]
+C:\Program Files\Borland\Indy\D7\dclIndy70.bpl=Internet Direct (Indy) for D7 Property and Component Editors
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
+[HistoryLists\hlSearchPath]
+Count=1
+Item0=..

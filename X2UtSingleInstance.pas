@@ -10,83 +10,408 @@ unit X2UtSingleInstance;
 
 interface
 uses
-  SysUtils;
+  Classes,
+  SysUtils,
+  Messages;
+
+const
+  IM_COMMANDLINE  = $00000001;
+  IM_APP          = $00000100;
 
 type
-  {
-    :$ Notifier interface
+  EInstanceNotActive  = class(Exception);
+  EInstanceNoAppID    = class(Exception);
 
-    :: Applications who want to receive notifications on new instances must
-    :: implements this interface and call RegisterInstance.
+
+  {
+    :$ Notifier observer interface.
+
+    :: Applications that want to receive notifications on new instances must
+    :: implement this interface and call Attach(Instance).
   }
-  IX2InstanceNotifier = interface
+  IX2InstanceObserver = interface
     ['{4C435D46-6A7F-4CD7-9400-338E3E8FB5C6}']
     procedure OnInstance(const ACmdLine: String);
   end;
 
-  //:$ Checks for a previous instance of the application
-  //:: Returns False if a previous instance was found, True if this is the
-  //:: first registered instance. ApplicationID must be unique to prevent
-  //:: application conflicts, usage of a generated GUID is recommended.
-  //:! Set ANotify to False if you're using SingleInstance in a console
-  //:! application without a message loop.
+  {
+    :$ Extended notifier observer interface.
+
+    :: Applications that want to receive custom notifications as well must
+    :: implement this interface and call Attach(Instance).
+  }
+  IX2InstanceObserverEx = interface(IX2InstanceObserver)
+    ['{755A6548-3EA8-46C2-9FF5-FDE4BD67B699}']
+    procedure OnNotify(AMessage: Integer; const AData: String);
+  end;
+
+
+  {
+    :$ Internal file mapping layout.
+  }
+  PX2InstanceMapData  = ^TX2InstanceMapData;
+  TX2InstanceMapData  = record
+    RefCount:     Integer;
+    Window:       THandle;
+  end;
+
+  {
+    :$ Instance object.
+
+    :: Manages an instance. Instances are identified by an ApplicationID, which
+    :: must be unique. For simple single instance checking you can use the
+    :: SingleInstance wrapper function.
+  }
+  TX2Instance = class(TObject)
+  private
+    FActive:            Boolean;
+    FApplicationID:     String;
+    FFirstInstance:     Boolean;
+    FGlobal:            Boolean;
+
+    FFileMapData:       PX2InstanceMapData;
+    FFileMapping:       THandle;
+    FObservers:         TInterfaceList;
+  protected
+    function GetCount(): Integer; virtual;
+    procedure SetApplicationID(const Value: String); virtual;
+    procedure SetGlobal(const Value: Boolean); virtual;
+    procedure SetActive(const Value: Boolean); virtual;
+
+    procedure WindowProc(var Message: TMessage); virtual;
+
+    property FileMapping: THandle             read FFileMapping;
+    property FileMapData: PX2InstanceMapData  read FFileMapData;
+    property Observers:   TInterfaceList      read FObservers;
+  public
+    constructor Create();
+    destructor Destroy(); override;
+
+    procedure Open(); virtual;
+    procedure Close(); virtual;
+
+    //:$ Sends a notification to the first instance.
+    //:! For custom messages you are recommended to start message IDs counting
+    //:! from IM_APP. Anything below is reserved for internal use.
+    procedure Notify(AMessage: Integer; const AData: String); virtual;
+
+    //:$ Registers the instance for notifications.
+    //:: If an application wants to be notified of new instances it must
+    //:: implement the IInstanceNotifier and register the interface using
+    //:: this function.
+    procedure Attach(const ANotifier: IX2InstanceObserver);
+
+    //:$ Unregisters a previously registered instance.
+    procedure Detach(const ANotifier: IX2InstanceObserver);
+
+    property Active:          Boolean   read FActive          write SetActive;
+    property ApplicationID:   String    read FApplicationID   write SetApplicationID;
+    property FirstInstance:   Boolean   read FFirstInstance;
+    property Global:          Boolean   read FGlobal          write SetGlobal;
+    property Count:           Integer   read GetCount;
+  end;
+
+  {
+    :$ Checks for a previous instance of the application.
+
+    :: Returns False if a previous instance was found, True if this is the
+    :: first registered instance. ApplicationID must be unique to prevent
+    :: application conflicts, usage of a generated GUID is recommended.
+    ::
+    :: If AGlobal is True, the check is performed system-wide. This only
+    :: affects Terminal Services and XP Fast User Switching sessions.
+    ::
+    :: This function is a wrapper for the TX2Instance object. You can access
+    :: the created object through the Instance function.
+
+    :! Set ANotify to False if you're using SingleInstance in a console
+    :! application without a message loop.
+    :!
+    :! If AGlobal is True, ANotify only works if the previous instance was
+    :! started by the same user.
+  }
   function SingleInstance(const AApplicationID: String;
-                          const ANotify: Boolean = True): Boolean;
+                          ANotify: Boolean = True;
+                          AGlobal: Boolean = True): Boolean;
 
-  //:$ Registers the instance for notifications
-  //:: If an application wants to be notified of new instances it must
-  //:: implement the IX2InstanceNotifier and register the interface using
-  //:: this function.
-  procedure RegisterInstance(const ANotifier: IX2InstanceNotifier);
+  {
+    :$ Returns a singleton TX2Instance object.
 
-  //:$ Unregisters a previously registered instance
-  procedure UnregisterInstance(const ANotifier: IX2InstanceNotifier);
+    :: The object is automatically configured when using the SingleInstance
+    :: function.
+  }
+  function Instance(): TX2Instance;
 
 
-  //:$ Works like System.ParamCount, but uses the specified string instead
-  //:$ of the actual command line
+  {
+    :$ Registers the instance for notifications
+
+    :: Calls Attach on the singleton Instance.
+  }
+  procedure AttachInstance(const ANotifier: IX2InstanceObserver);
+
+  {
+    :$ Unregisters a previously registered instance.
+
+    :: Calls Detach on the singleton Instance.
+  }
+  procedure DetachInstance(const ANotifier: IX2InstanceObserver);
+
+
+
+  {
+    :$ Works like System.ParamCount, but uses the specified string instead
+    :$ of the actual command line.
+  }
   function ParamCountEx(const ACmdLine: String): Integer;
 
-  //:$ Works like System.ParamStr, but uses the specified string instead
-  //:$ of the actual command line
+  {
+    :$ Works like System.ParamStr, but uses the specified string instead
+    :$ of the actual command line
+  }
   function ParamStrEx(const ACmdLine: String; AIndex: Integer): String;
 
-  //:$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
-  //:$ instead of the actual command line
+  {
+    :$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
+    :$ instead of the actual command line
+  }
   function FindCmdLineSwitchEx(const ACmdLine, ASwitch: String;
                                const AChars: TSysCharSet;
                                const AIgnoreCase: Boolean): Boolean; overload;
 
-  //:$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
-  //:$ instead of the actual command line
+  {
+    :$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
+    :$ instead of the actual command line
+  }
   function FindCmdLineSwitchEx(const ACmdLine, ASwitch: String): Boolean; overload;
 
-  //:$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
-  //:$ instead of the actual command line
+  {
+    :$ Works like SysUtils.FindCmdLineSwitch, but uses the specified string
+    :$ instead of the actual command line
+  }
   function FindCmdLineSwitchEx(const ACmdLine, ASwitch: String;
                                const AIgnoreCase: Boolean): Boolean; overload;
 
+
 implementation
 uses
-  Classes,
-  Messages,
   Windows;
 
+
 const
-  CWindowClass  = 'X2UtInstance.Window';
-  CDataCmdLine  = $1010;
+  WindowClass     = 'X2UtSingleInstance.Window';
+
 
 var
-  GNotifiers:       TInterfaceList;
-  GFileMapping:     THandle;
-  GWindow:          THandle;
+  GlobalInstance:   TX2Instance;
 
 
-{$WARN SYMBOL_PLATFORM OFF}  
+{$WARN SYMBOL_PLATFORM OFF}
+
+
+
+{ TX2Instance }
+constructor TX2Instance.Create();
+begin
+  inherited;
+
+  FObservers  := TInterfaceList.Create;
+end;
+
+destructor TX2Instance.Destroy();
+begin
+  Active  := False;
+  FreeAndNil(FObservers);
+
+  inherited;
+end;
+
+
+procedure TX2Instance.Notify(AMessage: Integer; const AData: String);
+var
+  copyStruct: TCopyDataStruct;
+
+begin
+  if not Active then
+    raise EInstanceNotActive.Create('Instance not Active');
+
+  if FileMapData^.Window = 0 then
+    Exit;
+
+  copyStruct.dwData := AMessage;
+  copyStruct.cbData := Length(AData);
+  copyStruct.lpData := PChar(AData);
+
+  SendMessage(FileMapData^.Window, WM_COPYDATA, 0, Integer(@copyStruct));
+end;
+
+
+procedure TX2Instance.Open();
+const
+  ScopePrefix:    array[Boolean] of String  = ('Local\', 'Global\');
+
+begin
+  if Active then
+    Exit;
+
+  if Length(ApplicationID) = 0 then
+    raise EInstanceNoAppID.Create('ApplicationID not specified');
+
+  FFirstInstance  := True;
+
+  { Attempt to create shared memory }
+  SetLastError(0);
+  FFileMapping  := CreateFileMapping($FFFFFFFF, nil, PAGE_READWRITE, 0,
+                                     SizeOf(TX2InstanceMapData),
+                                     PChar(ScopePrefix[Global] +
+                                           'SingleInstance.' + ApplicationID));
+  if FFileMapping = 0 then
+    RaiseLastOSError();
+
+  FActive := True;
+  try
+    FFirstInstance  := (GetLastError() <> ERROR_ALREADY_EXISTS);
+    FFileMapData    := MapViewOfFile(FFileMapping, FILE_MAP_WRITE, 0, 0, 0);
+
+    if not Assigned(FFileMapData) then
+      RaiseLastOSError();
+
+    if FFirstInstance then
+    begin
+      FileMapData^.Window := CreateWindow(WindowClass, '', 0, 0, 0, 0, 0, 0,
+                                          0, SysInit.HInstance, nil);
+      if FileMapData^.Window = 0 then
+        RaiseLastOSError();
+
+      SetWindowLong(FileMapData^.Window, GWL_WNDPROC,
+                    Integer(MakeObjectInstance(WindowProc)));
+    end;
+
+    Inc(FFileMapData^.RefCount);
+  except
+    Close();
+  end;
+end;
+
+procedure TX2Instance.Close();
+begin
+  if not Active then
+    Exit;
+    
+  if Assigned(FileMapData) then
+  begin
+    Dec(FileMapData^.RefCount);
+    if FirstInstance then
+      DestroyWindow(FileMapData^.Window);
+
+    UnmapViewOfFile(FileMapData);
+  end;
+
+  if FileMapping <> 0 then
+    CloseHandle(FileMapping);
+  
+  FActive := False;
+end;
+
+
+procedure TX2Instance.Attach(const ANotifier: IX2InstanceObserver);
+begin
+  if Observers.IndexOf(ANotifier) = -1 then
+    Observers.Add(ANotifier as IX2InstanceObserver);
+end;
+
+procedure TX2Instance.Detach(const ANotifier: IX2InstanceObserver);
+begin
+  Observers.Remove(ANotifier as IX2InstanceObserver);
+end;
+
+
+procedure TX2Instance.WindowProc(var Message: TMessage);
+var
+  copyData:           PCopyDataStruct;
+  data:               String;
+  observerIndex:      Integer;
+  observerExIntf:     IX2InstanceObserverEx;
+
+begin
+  if Assigned(FileMapData) then
+    case Message.Msg of
+      WM_COPYDATA:
+        begin
+          copyData  := PCopyDataStruct(Message.LParam);
+          data      := '';
+
+          if copyData^.cbData > 0 then
+            SetString(data, PChar(copyData^.lpData), copyData^.cbData);
+
+          case copyData^.dwData of
+            IM_COMMANDLINE:
+              for observerIndex := 0 to Pred(Observers.Count) do
+                IX2InstanceObserver(Observers[observerIndex]).OnInstance(data);
+          else
+            for observerIndex := 0 to Pred(Observers.Count) do
+              if Supports(Observers[observerIndex], IX2InstanceObserverEx, observerExIntf) then
+                observerExIntf.OnNotify(copyData^.dwData, data);
+          end;
+        end;
+    else
+      Message.Result  := DefWindowProc(FileMapData^.Window, Message.Msg,
+                                       Message.WParam, Message.LParam);
+    end;
+end;
+
+
+function TX2Instance.GetCount(): Integer;
+begin
+  Result := 0;
+  if Active then
+    Result := FileMapData^.RefCount;
+end;
+
+procedure TX2Instance.SetActive(const Value: Boolean);
+begin
+  if Value then
+    Open
+  else
+    Close;
+end;
+
+procedure TX2Instance.SetApplicationID(const Value: String);
+var
+  wasActive: Boolean;
+
+begin
+  if Value <> FApplicationID then
+  begin
+    wasActive       := Active;
+    Active          := False;
+
+    FApplicationID  := Value;
+
+    Active          := wasActive;
+  end;
+end;
+
+procedure TX2Instance.SetGlobal(const Value: Boolean);
+var
+  wasActive: Boolean;
+
+begin
+  if Value <> FGlobal then
+  begin
+    wasActive       := Active;
+    Active          := False;
+
+    FGlobal         := Value;
+
+    Active          := wasActive;
+  end;
+end;
+
 
 
 // Copied from System unit because Borland didn't make it public
-function GetParamStr(P: PChar; var Param: string): PChar;
+function GetParamStr(P: PChar; var Param: String): PChar;
 var
   i, Len: Integer;
   Start, S, Q: PChar;
@@ -159,117 +484,53 @@ begin
 end;
 
 
-{========================================
-  Window Procedure
-========================================}
-function WndProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;
+{ Single instance wrappers }
+function SingleInstance(const AApplicationID: String;
+                        ANotify, AGlobal: Boolean): Boolean;
 var
-  sCmdLine:       String;
-  iNotifier:      Integer;
+  newCmdLine:   String;
+  dummy:        String;
 
 begin
-  Result  := DefWindowProc(hWnd, uMsg, wParam, lParam);
-
-  case uMsg of
-    WM_COPYDATA:
-      if PCopyDataStruct(lParam)^.dwData = CDataCmdLine then begin
-        with PCopyDataStruct(lParam)^ do
-          SetString(sCmdLine, PChar(lpData), cbData - 1);
-
-        for iNotifier := GNotifiers.Count - 1 downto 0 do
-          IX2InstanceNotifier(GNotifiers[iNotifier]).OnInstance(sCmdLine);
-      end;
-  end;
-end;
-
-
-{========================================
-  Single Instance Check
-========================================}
-function SingleInstance;
-var
-  pData:        ^THandle;
-  pCopy:        TCopyDataStruct;
-  pCmdLine:     PChar;
-  sDummy:       String;
-
+  with Instance do
 begin
-  Result  := False;
-  if GFileMapping <> 0 then
-    exit;
+    ApplicationID := AApplicationID;
+    Global        := AGlobal;
+    Active        := True;
 
-  // Attempt to create shared memory
-  GFileMapping  := CreateFileMapping($ffffffff, nil, PAGE_READWRITE, 0,
-                                     SizeOf(THandle), PChar('X2UtInstance.' +
-                                     AApplicationID));
-  if GFileMapping = 0 then
-    exit;
+    Result        := FirstInstance;
 
-  if GetLastError() = ERROR_ALREADY_EXISTS then begin
-    if ANotify then begin
-      pData := MapViewOfFile(GFileMapping, FILE_MAP_READ, 0, 0, 0);
-      if Assigned(pData) then begin
-        // Pass command-line parameters
-        with pCopy do begin
-          pCmdLine  := PChar('"' + ParamStr(0) + '" ' + GetParamStr(CmdLine, sDummy));
-
-          dwData    := CDataCmdLine;
-          cbData    := StrLen(pCmdLine) + 1;
-
-          GetMem(lpData, cbData);
-          StrCopy(lpData, pCmdLine);
-        end;
-
-        SendMessage(pData^, WM_COPYDATA, 0, Integer(@pCopy));
-        UnmapViewOfFile(pData);
+    if (not Result) and ANotify then
+    begin
+      { For compatibility with ParamStr(0), we'll modify the command-line to
+        include the full executable path. }
+      newCmdLine  := '"' + ParamStr(0) + '" ' + GetParamStr(CmdLine, dummy);
+      Notify(IM_COMMANDLINE, newCmdLine);
       end;
     end;
-
-    CloseHandle(GFileMapping);
-    GFileMapping  := 0;
-    exit;
   end;
 
-  pData   := MapViewOfFile(GFileMapping, FILE_MAP_WRITE, 0, 0, 0);
-  if Assigned(pData) then begin
-    // Create window
-    GWindow := CreateWindow(CWindowClass, '', 0, 0, 0, 0, 0, 0, 0,
-                            SysInit.HInstance, nil);
-    pData^  := GWindow;
-  end else begin
-    CloseHandle(GFileMapping);
-    GFileMapping  := 0;
-    exit;
-  end;
-
-  Result  := True;
-end;
-
-
-{========================================
-  Notifier Registration
-========================================}
-procedure RegisterInstance;
+function Instance(): TX2Instance;
 begin
-  if GNotifiers.IndexOf(ANotifier) = -1 then
-    GNotifiers.Add(ANotifier);
+  if not Assigned(GlobalInstance) then
+    GlobalInstance  := TX2Instance.Create;
+
+  Result  := GlobalInstance;
 end;
 
-procedure UnregisterInstance;
-var
-  iIndex:       Integer;
-
+procedure AttachInstance(const ANotifier: IX2InstanceObserver);
 begin
-  iIndex  := GNotifiers.IndexOf(ANotifier);
-  if iIndex > -1 then
-    GNotifiers.Delete(iIndex);
+  Instance.Attach(ANotifier);
+end;
+
+procedure DetachInstance(const ANotifier: IX2InstanceObserver);
+begin
+  Instance.Detach(ANotifier);
 end;
 
 
-{========================================
-  Parameter Functions
-========================================}
-function ParamCountEx;
+{ Parameter helpers }
+function ParamCountEx(const ACmdLine: String): Integer;
 var
   pCmdLine:     PChar;
   sParam:       String;
@@ -288,7 +549,7 @@ begin
   end;
 end;
 
-function ParamStrEx;
+function ParamStrEx(const ACmdLine: String; AIndex: Integer): String;
 var
   pCmdLine:       PChar;
 
@@ -351,28 +612,20 @@ var
   wndClass:       TWndClass;
 
 initialization
-  GNotifiers  := TInterfaceList.Create();
-
-  // Register window class
+  { Register window class }
   FillChar(wndClass, SizeOf(wndClass), #0);
-  with wndClass do begin
-    lpfnWndProc     := @WndProc;
+  with wndClass do
+  begin
+    lpfnWndProc     := @DefWindowProc;
     hInstance       := SysInit.HInstance;
-    lpszClassName   := CWindowClass;
+    lpszClassName   := WindowClass;
   end;
 
   Windows.RegisterClass(wndClass);
 
 finalization
-  FreeAndNil(GNotifiers);
+  Windows.UnregisterClass(WindowClass, SysInit.HInstance);
 
-  if GFileMapping <> 0 then
-    // Free file mapping
-    CloseHandle(GFileMapping);
-
-  if GWindow <> 0 then
-    DestroyWindow(GWindow);
-
-  Windows.UnregisterClass(CWindowClass, SysInit.HInstance);
+  FreeAndNil(GlobalInstance);
 
 end.
