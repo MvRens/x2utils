@@ -51,6 +51,7 @@ type
 
     procedure DeleteSection(); override;
     procedure DeleteValue(const AName: String); override;
+//    procedure RenameSection(const ANewName: String)
   public
     constructor CreateInit(const AFactory: TX2SettingsFactory;
                            const AKey, ASection: String;

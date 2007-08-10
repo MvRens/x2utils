@@ -1,64 +1,99 @@
+{
+  :: X2UtPersist provides a framework for persisting objects and settings.
+  ::
+  :: Last changed:    $Date$
+  :: Revision:        $Rev$
+  :: Author:          $Author$
+}
 unit X2UtPersist;
 
 interface
 uses
   Classes,
+  Contnrs,
   Types,
-  TypInfo;
+  TypInfo,
+
+  X2UtPersistIntf;
 
 
 type
   TX2IterateObjectProc  = procedure(AObject: TObject; APropInfo: PPropInfo; var AContinue: Boolean) of object;
 
-  TX2CustomPersist = class(TObject)
+
+  TX2CustomPersist = class(TInterfacedPersistent, IX2Persist)
+  protected
+    function CreateFiler(AIsReader: Boolean): IX2PersistFiler; virtual; abstract;
+  public
+    function Read(AObject: TObject): Boolean; virtual;
+    procedure Write(AObject: TObject); virtual;
+
+    function CreateReader(): IX2PersistReader; virtual;
+    function CreateWriter(): IX2PersistWriter; virtual;
+
+    function CreateSectionReader(const ASection: String): IX2PersistReader; virtual;
+    function CreateSectionWriter(const ASection: String): IX2PersistWriter; virtual;
+  end;
+
+
+  TX2CustomPersistFiler = class(TInterfacedObject, IInterface, IX2PersistFiler,
+                                IX2PersistReader, IX2PersistWriter)
   private
+    FIsReader:    Boolean;
     FSections:    TStrings;
   protected
+    { IInterface }
+    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+
     function IterateObject(AObject: TObject; ACallback: TX2IterateObjectProc): Boolean; virtual;
 
-    procedure ReadObject(AObject: TObject; APropInfo: PPropInfo; var AContinue: Boolean);
-    procedure WriteObject(AObject: TObject; APropInfo: PPropInfo; var AContinue: Boolean);
-  protected
-    function DoRead(AObject: TObject): Boolean; virtual;
-    procedure DoWrite(AObject: TObject); virtual;
+    procedure ReadObject(AObject: TObject; APropInfo: PPropInfo; var AContinue: Boolean); virtual;
+    procedure WriteObject(AObject: TObject; APropInfo: PPropInfo; var AContinue: Boolean); virtual;
 
+    property IsReader:  Boolean           read FIsReader;
+    property Sections:  TStrings          read FSections;
+  public
+    constructor Create(AIsReader: Boolean);
+    destructor Destroy(); override;
+
+
+    { IX2PersistFiler }
     function BeginSection(const AName: String): Boolean; virtual;
     procedure EndSection(); virtual;
+    
+    procedure GetKeys(const ADest: TStrings); virtual; abstract;
+    procedure GetSections(const ADest: TStrings); virtual; abstract;
 
 
+    { IX2PersistReader }
+    function Read(AObject: TObject): Boolean; virtual;
+
+    function ReadBoolean(const AName: String; out AValue: Boolean): Boolean; virtual;
     function ReadInteger(const AName: String; out AValue: Integer): Boolean; virtual; abstract;
     function ReadFloat(const AName: String; out AValue: Extended): Boolean; virtual; abstract;
     function ReadString(const AName: String; out AValue: String): Boolean; virtual; abstract;
     function ReadInt64(const AName: String; out AValue: Int64): Boolean; virtual; abstract;
+    function ReadStream(const AName: String; AStream: TStream): Boolean; virtual;
 
-    procedure ReadCollection(const AName: String; ACollection: TCollection); virtual;
-    procedure ReadStream(const AName: String; AStream: TStream); virtual;
+    procedure ReadCollection(ACollection: TCollection); virtual;
 
 
+    { IX2PersistWriter }
+    procedure Write(AObject: TObject); virtual;
+
+    function WriteBoolean(const AName: String; AValue: Boolean): Boolean; virtual;
     function WriteInteger(const AName: String; AValue: Integer): Boolean; virtual; abstract;
     function WriteFloat(const AName: String; AValue: Extended): Boolean; virtual; abstract;
     function WriteString(const AName, AValue: String): Boolean; virtual; abstract;
     function WriteInt64(const AName: String; AValue: Int64): Boolean; virtual; abstract;
+    function WriteStream(const AName: String; AStream: TStream): Boolean; virtual;
 
     procedure ClearCollection(); virtual;
-    procedure WriteCollection(const AName: String; ACollection: TCollection); virtual;
-    procedure WriteStream(const AName: String; AStream: TStream); virtual;
+    procedure WriteCollection(ACollection: TCollection); virtual;
 
-
-    property Sections:    TStrings  read FSections;
-  public
-    constructor Create();
-    destructor Destroy(); override;
-
-    function Read(AObject: TObject): Boolean; virtual;
-    procedure Write(AObject: TObject); virtual;
+    procedure DeleteKey(const AName: String); virtual; abstract;
+    procedure DeleteSection(const AName: String); virtual; abstract;
   end;
-
-
-
-const
-  CollectionCountName       = 'Count';
-  CollectionItemNamePrefix  = 'Item';
 
 
 implementation
@@ -68,16 +103,110 @@ uses
   X2UtStrings;
 
 
-{ TX2CustomPersist }
-constructor TX2CustomPersist.Create();
-begin
-  inherited;
+type
+  { This class has to proxy all the interfaces in order for
+    reference counting to go through this class. }
+  TX2PersistSectionFilerProxy = class(TInterfacedObject, IInterface,
+                                      IX2PersistFiler, IX2PersistReader,
+                                      IX2PersistWriter)
+  private
+    FFiler:           IX2PersistFiler;
+    FSectionCount:    Integer;
+  protected
+    property SectionCount:    Integer           read FSectionCount;
 
+    property Filer:           IX2PersistFiler   read FFiler;
+
+
+    { IInterface }
+    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+
+
+    { IX2PersistFiler }
+    function BeginSection(const AName: String): Boolean;
+    procedure EndSection();
+
+    procedure GetKeys(const ADest: TStrings);
+    procedure GetSections(const ADest: TStrings);
+
+    
+    { IX2PersistReader }
+    function Read(AObject: TObject): Boolean;
+    function ReadBoolean(const AName: string; out AValue: Boolean): Boolean;
+    function ReadInteger(const AName: String; out AValue: Integer): Boolean;
+    function ReadFloat(const AName: String; out AValue: Extended): Boolean;
+    function ReadString(const AName: String; out AValue: String): Boolean;
+    function ReadInt64(const AName: String; out AValue: Int64): Boolean;
+    function ReadStream(const AName: String; AStream: TStream): Boolean;
+
+
+    { IX2PersistWriter }
+    procedure Write(AObject: TObject);
+    function WriteBoolean(const AName: String; AValue: Boolean): Boolean;
+    function WriteInteger(const AName: String; AValue: Integer): Boolean;
+    function WriteFloat(const AName: String; AValue: Extended): Boolean;
+    function WriteString(const AName, AValue: String): Boolean;
+    function WriteInt64(const AName: String; AValue: Int64): Boolean;
+    function WriteStream(const AName: String; AStream: TStream): Boolean;
+
+    procedure DeleteKey(const AName: String);
+    procedure DeleteSection(const AName: String);
+  public
+    constructor Create(const AFiler: IX2PersistFiler; const ASection: String);
+    destructor Destroy(); override;
+  end;
+
+
+{ TX2CustomPersist }
+function TX2CustomPersist.CreateReader(): IX2PersistReader;
+begin
+  Result  := (CreateFiler(True) as IX2PersistReader);
+end;
+
+
+function TX2CustomPersist.CreateWriter(): IX2PersistWriter;
+begin
+  Result  := (CreateFiler(False) as IX2PersistWriter);
+end;
+
+
+function TX2CustomPersist.CreateSectionReader(const ASection: String): IX2PersistReader;
+begin
+  Result  := (TX2PersistSectionFilerProxy.Create(CreateReader(), ASection) as IX2PersistReader);
+end;
+
+
+function TX2CustomPersist.CreateSectionWriter(const ASection: String): IX2PersistWriter;
+begin
+  Result  := (TX2PersistSectionFilerProxy.Create(CreateWriter(), ASection) as IX2PersistWriter);
+end;
+
+
+function TX2CustomPersist.Read(AObject: TObject): Boolean;
+begin
+  with CreateReader() do
+    Result  := Read(AObject);
+end;
+
+
+procedure TX2CustomPersist.Write(AObject: TObject);
+begin
+  with CreateWriter() do
+    Write(AObject);
+end;
+
+
+{ TX2CustomPersistFiler }
+constructor TX2CustomPersistFiler.Create(AIsReader: Boolean);
+begin
+  inherited Create();
+
+  FIsReader := AIsReader;
   FSections := TStringList.Create();
 end;
 
 
-destructor TX2CustomPersist.Destroy();
+destructor TX2CustomPersistFiler.Destroy();
 begin
   FreeAndNil(FSections);
 
@@ -85,7 +214,37 @@ begin
 end;
 
 
-function TX2CustomPersist.IterateObject(AObject: TObject; ACallback: TX2IterateObjectProc): Boolean;
+function TX2CustomPersistFiler.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+  Pointer(Obj)  := nil;
+  Result        := E_NOINTERFACE;
+
+  { A filer is one-way, prevent the wrong interface from being obtained }
+  if IsEqualGUID(IID, IX2PersistReader) and (not IsReader) then
+    Exit;
+
+  if IsEqualGUID(IID, IX2PersistWriter) and IsReader then
+    Exit;
+
+  Result  := inherited QueryInterface(IID, Obj);
+end;
+
+
+function TX2CustomPersistFiler.BeginSection(const AName: String): Boolean;
+begin
+  FSections.Add(AName);
+  Result  := True;
+end;
+
+
+procedure TX2CustomPersistFiler.EndSection();
+begin
+  Assert(FSections.Count > 0, 'EndSection called without BeginSection');
+  FSections.Delete(Pred(FSections.Count));
+end;
+
+
+function TX2CustomPersistFiler.IterateObject(AObject: TObject; ACallback: TX2IterateObjectProc): Boolean;
 var
   propCount:      Integer;
   propList:       PPropList;
@@ -125,51 +284,36 @@ begin
 end;
 
 
-function TX2CustomPersist.Read(AObject: TObject): Boolean;
+function TX2CustomPersistFiler.Read(AObject: TObject): Boolean;
+var
+  customDataIntf: IX2PersistCustomData;
+
 begin
   Assert(Assigned(AObject), 'AObject must be assigned.');
-  Result  := DoRead(AObject);
+
+  if AObject is TCollection then
+    ReadCollection(TCollection(AObject));
+
+  Result  := IterateObject(AObject, ReadObject);
+
+  if Result and Supports(AObject, IX2PersistCustomData, customDataIntf) then
+    customDataIntf.Read(Self);
 end;
 
 
-procedure TX2CustomPersist.Write(AObject: TObject);
+function TX2CustomPersistFiler.ReadBoolean(const AName: String; out AValue: Boolean): Boolean;
+var
+  value:    String;
+
 begin
-  Assert(Assigned(AObject), 'AObject must be assigned.');
-  DoWrite(AObject);
+  AValue  := False;
+  Result  := ReadString(AName, value) and
+             TryStrToBool(value, AValue);
 end;
 
 
-
-function TX2CustomPersist.DoRead(AObject: TObject): Boolean;
-begin
-  IterateObject(AObject, ReadObject);
-  Result  := True;
-end;
-
-
-procedure TX2CustomPersist.DoWrite(AObject: TObject);
-begin
-  IterateObject(AObject, WriteObject);
-end;
-
-
-function TX2CustomPersist.BeginSection(const AName: String): Boolean;
-begin
-  FSections.Add(AName);
-  Result  := True;
-end;
-
-
-procedure TX2CustomPersist.EndSection();
-begin
-  Assert(FSections.Count > 0, 'EndSection called without BeginSection');
-  FSections.Delete(Pred(FSections.Count));
-end;
-
-
-
-procedure TX2CustomPersist.ReadObject(AObject: TObject; APropInfo: PPropInfo;
-                                      var AContinue: Boolean);
+procedure TX2CustomPersistFiler.ReadObject(AObject: TObject; APropInfo: PPropInfo;
+                                            var AContinue: Boolean);
 var
   ordValue:     Integer;
   floatValue:   Extended;
@@ -240,10 +384,7 @@ begin
             { Recurse into object properties }
             if BeginSection(APropInfo^.Name) then
             try
-              if objectProp is TCollection then
-                ReadCollection(APropInfo^.Name, TCollection(objectProp));
-
-              AContinue := IterateObject(objectProp, ReadObject);
+              AContinue := Read(objectProp);
             finally
               EndSection();
             end;
@@ -254,7 +395,29 @@ begin
 end;
 
 
-procedure TX2CustomPersist.WriteObject(AObject: TObject; APropInfo: PPropInfo; var AContinue: Boolean);
+procedure TX2CustomPersistFiler.Write(AObject: TObject);
+var
+  customDataIntf: IX2PersistCustomData;
+
+begin
+  Assert(Assigned(AObject), 'AObject must be assigned.');
+
+  if AObject is TCollection then
+    WriteCollection(TCollection(AObject));
+
+  if IterateObject(AObject, WriteObject) and
+     Supports(AObject, IX2PersistCustomData, customDataIntf) then
+    customDataIntf.Write(Self);
+end;
+
+
+function TX2CustomPersistFiler.WriteBoolean(const AName: String; AValue: Boolean): Boolean;
+begin
+  Result  := WriteString(AName, BoolToStr(AValue, True));
+end;
+
+
+procedure TX2CustomPersistFiler.WriteObject(AObject: TObject; APropInfo: PPropInfo; var AContinue: Boolean);
 var
   ordValue:     Integer;
   floatValue:   Extended;
@@ -332,10 +495,7 @@ begin
             { Recurse into object properties }
             if BeginSection(APropInfo^.Name) then
             try
-              if objectProp is TCollection then
-                WriteCollection(APropInfo^.Name, TCollection(objectProp));
-
-              AContinue := IterateObject(objectProp, WriteObject);
+              Write(objectProp);
             finally
               EndSection();
             end;
@@ -346,7 +506,7 @@ begin
 end;
 
 
-procedure TX2CustomPersist.ReadCollection(const AName: String; ACollection: TCollection);
+procedure TX2CustomPersistFiler.ReadCollection(ACollection: TCollection);
 var
   itemCount: Integer;
   itemIndex: Integer;
@@ -363,8 +523,8 @@ begin
       begin
         if BeginSection(CollectionItemNamePrefix + IntToStr(itemIndex)) then
         try
-          collectionItem  := ACollection.Add();
-          IterateObject(collectionItem, ReadObject);
+          collectionItem  := ACollection.Add();          
+          Read(collectionItem);
         finally
           EndSection();
         end;
@@ -376,18 +536,39 @@ begin
 end;
 
 
-procedure TX2CustomPersist.ReadStream(const AName: String; AStream: TStream);
+function TX2CustomPersistFiler.ReadStream(const AName: String; AStream: TStream): Boolean;
+var
+  data:   String;
+
 begin
-  // #ToDo1 (MvR) 8-6-2007: ReadStream
+  Result  := ReadString(AName, data);
+  if Result then
+    AStream.WriteBuffer(PChar(data)^, Length(data));
 end;
 
 
-procedure TX2CustomPersist.ClearCollection();
+procedure TX2CustomPersistFiler.ClearCollection();
+var
+  keyNames:   TStringList;
+  keyIndex:   Integer;
+
 begin
+  inherited;
+
+  keyNames  := TStringList.Create();
+  try
+    GetKeys(keyNames);
+
+    for keyIndex := 0 to Pred(keyNames.Count) do
+      if SameTextS(keyNames[keyIndex], CollectionItemNamePrefix) then
+        DeleteKey(keyNames[keyIndex]);
+  finally
+    FreeAndNil(keyNames);
+  end;
 end;
 
 
-procedure TX2CustomPersist.WriteCollection(const AName: String; ACollection: TCollection);
+procedure TX2CustomPersistFiler.WriteCollection(ACollection: TCollection);
 var
   itemIndex: Integer;
 
@@ -399,16 +580,193 @@ begin
   begin
     if BeginSection(CollectionItemNamePrefix + IntToStr(itemIndex)) then
     try
-      IterateObject(ACollection.Items[itemIndex], WriteObject);
+      Write(ACollection.Items[itemIndex]);
     finally
       EndSection();
     end;
   end;
 end;
 
-procedure TX2CustomPersist.WriteStream(const AName: String; AStream: TStream);
+
+function TX2CustomPersistFiler.WriteStream(const AName: String; AStream: TStream): Boolean;
+var
+  data:   String;
+
 begin
-  // #ToDo1 (MvR) 8-6-2007: WriteStream
+  Result            := True;
+  AStream.Position  := 0;
+
+  SetLength(data, AStream.Size);
+  AStream.ReadBuffer(PChar(data)^, AStream.Size);
+
+  WriteString(AName, data);
+end;
+
+
+{ TX2PersistSectionFilerProxy }
+constructor TX2PersistSectionFilerProxy.Create(const AFiler: IX2PersistFiler; const ASection: String);
+var
+  sections:       TSplitArray;
+  sectionIndex:   Integer;
+
+begin
+  inherited Create();
+
+  FFiler  := AFiler;
+
+  Split(ASection, SectionSeparator, sections);
+  FSectionCount := Length(sections);
+
+  for sectionIndex := Low(sections) to High(sections) do
+    Filer.BeginSection(sections[sectionIndex]);
+end;
+
+
+destructor TX2PersistSectionFilerProxy.Destroy();
+var
+  sectionIndex:     Integer;
+
+begin
+  for sectionIndex := 0 to Pred(SectionCount) do
+    Filer.EndSection();
+
+  inherited;
+end;
+
+
+function TX2PersistSectionFilerProxy.QueryInterface(const IID: TGUID; out Obj): HResult;
+var
+  filerInterface:   IInterface;
+
+begin
+  { Only return interfaces supported by the filer
+    - see TX2CustomPersistFiler.QueryInterface }
+  if Filer.QueryInterface(IID, filerInterface) = S_OK then
+    { ...but always return the proxy version of the interface to prevent
+         issues with reference counting. }
+    Result  := inherited QueryInterface(IID, Obj)
+  else
+    Result  := E_NOINTERFACE;
+end;
+
+
+function TX2PersistSectionFilerProxy.BeginSection(const AName: String): Boolean;
+begin
+  Result  := Filer.BeginSection(AName);
+end;
+
+
+procedure TX2PersistSectionFilerProxy.EndSection();
+begin
+  Filer.EndSection();
+end;
+
+
+procedure TX2PersistSectionFilerProxy.GetKeys(const ADest: TStrings);
+begin
+  Filer.GetKeys(ADest);
+end;
+
+
+procedure TX2PersistSectionFilerProxy.GetSections(const ADest: TStrings);
+begin
+  Filer.GetSections(ADest);
+end;
+
+
+function TX2PersistSectionFilerProxy.Read(AObject: TObject): Boolean;
+begin
+  Result  := (Filer as IX2PersistReader).Read(AObject);
+end;
+
+
+function TX2PersistSectionFilerProxy.ReadBoolean(const AName: string; out AValue: Boolean): Boolean;
+begin
+  Result  := (Filer as IX2PersistReader).ReadBoolean(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.ReadInteger(const AName: String; out AValue: Integer): Boolean;
+begin
+  Result  := (Filer as IX2PersistReader).ReadInteger(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.ReadFloat(const AName: String; out AValue: Extended): Boolean;
+begin
+  Result  := (Filer as IX2PersistReader).ReadFloat(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.ReadString(const AName: String; out AValue: String): Boolean;
+begin
+  Result  := (Filer as IX2PersistReader).ReadString(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.ReadInt64(const AName: String; out AValue: Int64): Boolean;
+begin
+  Result  := (Filer as IX2PersistReader).ReadInt64(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.ReadStream(const AName: String; AStream: TStream): Boolean;
+begin
+  Result  := (Filer as IX2PersistReader).ReadStream(AName, AStream);
+end;
+
+
+procedure TX2PersistSectionFilerProxy.Write(AObject: TObject);
+begin
+  (Filer as IX2PersistWriter).Write(AObject);
+end;
+
+
+function TX2PersistSectionFilerProxy.WriteBoolean(const AName: String; AValue: Boolean): Boolean;
+begin
+  Result  := (Filer as IX2PersistWriter).WriteBoolean(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.WriteInteger(const AName: String; AValue: Integer): Boolean;
+begin
+  Result  := (Filer as IX2PersistWriter).WriteInteger(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.WriteFloat(const AName: String; AValue: Extended): Boolean;
+begin
+  Result  := (Filer as IX2PersistWriter).WriteFloat(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.WriteString(const AName, AValue: String): Boolean;
+begin
+  Result  := (Filer as IX2PersistWriter).WriteString(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.WriteInt64(const AName: String; AValue: Int64): Boolean;
+begin
+  Result  := (Filer as IX2PersistWriter).WriteInt64(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.WriteStream(const AName: String; AStream: TStream): Boolean;
+begin
+  Result  := (Filer as IX2PersistWriter).WriteStream(AName, AStream);
+end;
+
+
+procedure TX2PersistSectionFilerProxy.DeleteKey(const AName: String);
+begin
+  (Filer as IX2PersistWriter).DeleteKey(AName);
+end;
+
+
+procedure TX2PersistSectionFilerProxy.DeleteSection(const AName: String);
+begin
+  (Filer as IX2PersistWriter).DeleteSection(AName);
 end;
 
 end.

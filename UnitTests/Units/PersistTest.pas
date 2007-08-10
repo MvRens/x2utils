@@ -10,6 +10,8 @@ uses
 type
   TPersistTest  = class(TTestCase)
   published
+    procedure QueryReaderWriter;
+
     procedure WriteNoTypeInfo;
     procedure WriteSimpleTypes;
   end;
@@ -19,14 +21,44 @@ implementation
 uses
   SysUtils,
   
-  X2UtPersist;
+  X2UtPersist,
+  X2UtPersistIntf;
 
 
 type
+  IPersistTestOutput = interface
+    ['{F0BFDA30-B2BF-449D-9A6E-0EDEBCDAE701}']
+    function GetLines(): TStrings;
+
+    property Lines: TStrings read GetLines;
+  end;
+
+  TPersistTestOutput = class(TInterfacedObject, IPersistTestOutput)
+  private
+    FLines:   TStrings;
+  protected
+    function GetLines(): TStrings;
+  public
+    constructor Create();
+    destructor Destroy(); override;
+  end;
+
   TX2UtPersistTest = class(TX2CustomPersist)
   private
-    FOutput:  TStrings;
+    FOutput:  IPersistTestOutput;
   protected
+    function CreateFiler(AIsReader: Boolean): IX2PersistFiler; override;
+  public
+    constructor Create();
+
+    property Output:  IPersistTestOutput read FOutput;
+  end;
+
+
+  TX2UtPersistTestFiler = class(TX2CustomPersistFiler)
+  private
+    FOutput: IPersistTestOutput;
+  public
     function BeginSection(const AName: String): Boolean; override;
     procedure EndSection(); override;
 
@@ -39,13 +71,8 @@ type
     function WriteInt64(const AName: String; AValue: Int64): Boolean; override;
     function WriteInteger(const AName: String; AValue: Integer): Boolean; override;
     function WriteString(const AName: String; const AValue: String): Boolean; override;
-  public
-    constructor Create();
-    destructor Destroy(); override;
 
-    procedure Write(AObject: TObject); override;
-
-    property Output:  TStrings  read FOutput;
+    property Output:  IPersistTestOutput  read FOutput  write FOutput;
   end;
 
 
@@ -83,6 +110,32 @@ end;
 
 
 { TPersistTest }
+procedure TPersistTest.QueryReaderWriter;
+var
+  persistTest:    TX2UtPersistTest;
+
+begin
+  persistTest := TX2UtPersistTest.Create();
+  try
+    { Regular filer }
+    CheckTrue(Supports(persistTest.CreateReader(), IX2PersistReader), 'Reader -> Reader');
+    CheckFalse(Supports(persistTest.CreateReader(), IX2PersistWriter), 'Reader -> Writer');
+
+    CheckTrue(Supports(persistTest.CreateWriter(), IX2PersistWriter), 'Writer -> Writer');
+    CheckFalse(Supports(persistTest.CreateWriter(), IX2PersistReader), 'Writer -> Reader');
+
+    { Section proxy }
+    CheckTrue(Supports(persistTest.CreateSectionReader('Test.Section'), IX2PersistReader), 'Section Reader -> Reader');
+    CheckFalse(Supports(persistTest.CreateSectionReader('Test.Section'), IX2PersistWriter), 'Section Reader -> Writer');
+
+    CheckTrue(Supports(persistTest.CreateSectionWriter('Test.Section'), IX2PersistWriter), 'Section Writer -> Writer');
+    CheckFalse(Supports(persistTest.CreateSectionWriter('Test.Section'), IX2PersistReader), 'Section Writer -> Reader');
+  finally
+    FreeAndNil(persistTest);
+  end;
+end;
+
+
 procedure TPersistTest.WriteNoTypeInfo;
 var
   testObject: TTypeInfoLess;
@@ -94,7 +147,7 @@ begin
     try
       Write(testObject);
 
-      CheckEquals('', Output.Text);
+      CheckEquals('', Output.Lines.Text);
     finally
       Free;
     end;
@@ -114,7 +167,7 @@ begin
     try
       Write(testObject);
 
-      CheckEquals('Integer:42'#13#10, Output.Text);
+      CheckEquals('Integer:42'#13#10, Output.Lines.Text);
     finally
       Free;
     end;
@@ -129,92 +182,111 @@ constructor TX2UtPersistTest.Create();
 begin
   inherited;
 
-  FOutput := TStringList.Create();
+  FOutput := TPersistTestOutput.Create();
 end;
 
 
-destructor TX2UtPersistTest.Destroy();
+function TX2UtPersistTest.CreateFiler(AIsReader: Boolean): IX2PersistFiler;
+var
+  testFiler:  TX2UtPersistTestFiler;
+
 begin
-  FreeAndNil(FOutput);
+  testFiler         := TX2UtPersistTestFiler.Create(AIsReader);;
+  testFiler.Output  := Self.Output;
 
-  inherited;
+  Result  := testFiler;
 end;
 
 
-procedure TX2UtPersistTest.Write(AObject: TObject);
-begin
-  Output.Clear();
-
-  inherited;
-end;
-
-
-function TX2UtPersistTest.BeginSection(const AName: String): Boolean;
+{ TX2UtPersistTestFiler }
+function TX2UtPersistTestFiler.BeginSection(const AName: String): Boolean;
 begin
   Result := inherited BeginSection(AName);
   if Result then
-    Output.Add(AName + ' {');
+    Output.Lines.Add(AName + ' {');
 end;
 
 
-procedure TX2UtPersistTest.EndSection();
+procedure TX2UtPersistTestFiler.EndSection();
 begin
-  Output.Add('}');
+  Output.Lines.Add('}');
   inherited EndSection();
 end;
 
 
-function TX2UtPersistTest.ReadFloat(const AName: String; out AValue: Extended): Boolean;
+function TX2UtPersistTestFiler.ReadFloat(const AName: String; out AValue: Extended): Boolean;
 begin
   Result := False;
 end;
 
 
-function TX2UtPersistTest.ReadInt64(const AName: String; out AValue: Int64): Boolean;
+function TX2UtPersistTestFiler.ReadInt64(const AName: String; out AValue: Int64): Boolean;
 begin
   Result := False;
 end;
 
 
-function TX2UtPersistTest.ReadInteger(const AName: String; out AValue: Integer): Boolean;
+function TX2UtPersistTestFiler.ReadInteger(const AName: String; out AValue: Integer): Boolean;
 begin
   Result := False;
 end;
 
 
-function TX2UtPersistTest.ReadString(const AName: String; out AValue: String): Boolean;
+function TX2UtPersistTestFiler.ReadString(const AName: String; out AValue: String): Boolean;
 begin
   Result := False;
 end;
 
 
-function TX2UtPersistTest.WriteFloat(const AName: String; AValue: Extended): Boolean;
+function TX2UtPersistTestFiler.WriteFloat(const AName: String; AValue: Extended): Boolean;
 begin
-  Output.Add(Format('Float:%.2f', [AValue]));
+  Output.Lines.Add(Format('Float:%.2f', [AValue]));
   Result := True;
 end;
 
 
-function TX2UtPersistTest.WriteInt64(const AName: String; AValue: Int64): Boolean;
+function TX2UtPersistTestFiler.WriteInt64(const AName: String; AValue: Int64): Boolean;
 begin
-  Output.Add(Format('Int64:%d', [AValue]));
+  Output.Lines.Add(Format('Int64:%d', [AValue]));
   Result := True;
 end;
 
 
-function TX2UtPersistTest.WriteInteger(const AName: String; AValue: Integer): Boolean;
+function TX2UtPersistTestFiler.WriteInteger(const AName: String; AValue: Integer): Boolean;
 begin
-  Output.Add(Format('Integer:%d', [AValue]));
+  Output.Lines.Add(Format('Integer:%d', [AValue]));
   Result := True;
 end;
 
 
-function TX2UtPersistTest.WriteString(const AName, AValue: String): Boolean;
+function TX2UtPersistTestFiler.WriteString(const AName, AValue: String): Boolean;
 begin
-  Output.Add(Format('String:%s', [AValue]));
+  Output.Lines.Add(Format('String:%s', [AValue]));
   Result := True;
 end;
 
+
+{ TPersistTestOutput }
+constructor TPersistTestOutput.Create();
+begin
+  inherited;
+
+  FLines  := TStringList.Create();
+end;
+
+
+destructor TPersistTestOutput.Destroy();
+begin
+  FreeAndNil(FLines);
+
+  inherited;
+end;
+
+
+function TPersistTestOutput.GetLines(): TStrings;
+begin
+  Result  := FLines;
+end;
 
 initialization
   RegisterTest(TPersistTest.Suite);

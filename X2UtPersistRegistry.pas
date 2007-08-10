@@ -1,3 +1,10 @@
+{
+  :: X2UtPersistRegistry implements persistency to the Windows   Registry.
+  ::
+  :: Last changed:    $Date$
+  :: Revision:        $Rev$
+  :: Author:          $Author$
+}
 unit X2UtPersistRegistry;
 
 interface
@@ -6,28 +13,38 @@ uses
   Registry,
   Windows,
 
-  X2UtPersist;
+  X2UtPersist,
+  X2UtPersistIntf;
 
-  
+
 type
   TX2UtPersistRegistry = class(TX2CustomPersist)
   private
     FKey:       String;
     FRootKey:   HKEY;
-
-    FRegistry:  TRegistry;
-    FReading:   Boolean;
   protected
-    procedure InitRegistry(AReading: Boolean);
-    procedure FinalizeRegistry();
+    function CreateFiler(AIsReader: Boolean): IX2PersistFiler; override;
+  public
+    constructor Create();
 
+    property Key:       String  read FKey     write FKey;
+    property RootKey:   HKEY    read FRootKey write FRootKey;
+  end;
+
+
+  TX2UtPersistRegistryFiler = class(TX2CustomPersistFiler)
+  private
+    FKey:       String;
+    FRegistry:  TRegistry;
+  protected
     function OpenKey(const ANewKey: String): Boolean;
-
-    function DoRead(AObject: TObject): Boolean; override;
-    procedure DoWrite(AObject: TObject); override;
-
+  public
     function BeginSection(const AName: String): Boolean; override;
     procedure EndSection(); override;
+
+
+    procedure GetKeys(const ADest: TStrings); override;
+    procedure GetSections(const ADest: TStrings); override;
 
     
     function ReadInteger(const AName: String; out AValue: Integer): Boolean; override;
@@ -35,21 +52,25 @@ type
     function ReadString(const AName: String; out AValue: String): Boolean; override;
     function ReadInt64(const AName: String; out AValue: Int64): Boolean; override;
 
+    function ReadStream(const AName: string; AStream: TStream): Boolean; override;
+
 
     function WriteInteger(const AName: String; AValue: Integer): Boolean; override;
     function WriteFloat(const AName: String; AValue: Extended): Boolean; override;
     function WriteString(const AName, AValue: String): Boolean; override;
     function WriteInt64(const AName: String; AValue: Int64): Boolean; override;
 
-    procedure ClearCollection(); override;
+    function WriteStream(const AName: string; AStream: TStream): Boolean; override;
 
+    procedure DeleteKey(const AName: string); override;
+    procedure DeleteSection(const AName: string); override;
+
+    
+    property Key:         String    read FKey;
     property Registry:    TRegistry read FRegistry;
   public
-    constructor Create();
+    constructor Create(AIsReader: Boolean; ARootKey: HKEY; const AKey: String);
     destructor Destroy(); override;
-    
-    property Key:       String  read FKey     write FKey;
-    property RootKey:   HKEY    read FRootKey write FRootKey;
   end;
 
 
@@ -100,37 +121,43 @@ end;
 constructor TX2UtPersistRegistry.Create();
 begin
   inherited;
-
+  
   FRootKey  := HKEY_CURRENT_USER;
 end;
 
 
-destructor TX2UtPersistRegistry.Destroy();
+function TX2UtPersistRegistry.CreateFiler(AIsReader: Boolean): IX2PersistFiler;
 begin
-  inherited;
+  Result  := TX2UtPersistRegistryFiler.Create(AIsReader, Self.RootKey, Self.Key);
 end;
 
 
-procedure TX2UtPersistRegistry.InitRegistry(AReading: Boolean);
+{ TX2UtPersistRegistry }
+constructor TX2UtPersistRegistryFiler.Create(AIsReader: Boolean; ARootKey: HKEY; const AKey: String);
 begin
-  FReading  := AReading;
+  inherited Create(AIsReader);
 
-  if AReading then
+  if AIsReader then
     FRegistry := TRegistry.Create(KEY_READ)
   else
     FRegistry := TRegistry.Create();
 
-  FRegistry.RootKey := Self.RootKey;
+  FRegistry.RootKey := ARootKey;
+  FKey              := AKey;
+
+  OpenKey('');
 end;
 
 
-procedure TX2UtPersistRegistry.FinalizeRegistry();
+destructor TX2UtPersistRegistryFiler.Destroy();
 begin
   FreeAndNil(FRegistry);
+
+  inherited;
 end;
 
 
-function TX2UtPersistRegistry.OpenKey(const ANewKey: String): Boolean;
+function TX2UtPersistRegistryFiler.OpenKey(const ANewKey: String): Boolean;
 var
   keyName: String;
   sectionIndex: Integer;
@@ -150,7 +177,7 @@ begin
 
   if Length(keyName) > 0 then
   begin
-   if FReading then
+   if IsReader then
       Result  := FRegistry.OpenKeyReadOnly(keyName)
     else
       Result  := FRegistry.OpenKey(keyName, True);
@@ -159,31 +186,7 @@ begin
 end;
 
 
-function TX2UtPersistRegistry.DoRead(AObject: TObject): Boolean;
-begin
-  InitRegistry(True);
-  try
-    OpenKey('');
-    Result  := inherited DoRead(AObject);
-  finally
-    FinalizeRegistry();
-  end;
-end;
-
-
-procedure TX2UtPersistRegistry.DoWrite(AObject: TObject);
-begin
-  InitRegistry(False);
-  try
-    OpenKey('');
-    inherited DoWrite(AObject);
-  finally
-    FinalizeRegistry();
-  end;
-end;
-
-
-function TX2UtPersistRegistry.BeginSection(const AName: String): Boolean;
+function TX2UtPersistRegistryFiler.BeginSection(const AName: String): Boolean;
 begin
   Result  := OpenKey(AName);
 
@@ -192,7 +195,7 @@ begin
 end;
 
 
-procedure TX2UtPersistRegistry.EndSection();
+procedure TX2UtPersistRegistryFiler.EndSection();
 begin
   inherited;
 
@@ -201,84 +204,149 @@ begin
 end;
 
 
-function TX2UtPersistRegistry.ReadInteger(const AName: String; out AValue: Integer): Boolean;
+procedure TX2UtPersistRegistryFiler.GetKeys(const ADest: TStrings);
 begin
+  Registry.GetValueNames(ADest);
+end;
+
+
+procedure TX2UtPersistRegistryFiler.GetSections(const ADest: TStrings);
+begin
+  Registry.GetKeyNames(ADest);
+end;
+
+
+function TX2UtPersistRegistryFiler.ReadInteger(const AName: String; out AValue: Integer): Boolean;
+begin
+  AValue  := 0;
   Result  := Registry.ValueExists(AName);
   if Result then
     AValue  := Registry.ReadInteger(AName);
 end;
 
 
-function TX2UtPersistRegistry.ReadFloat(const AName: String; out AValue: Extended): Boolean;
+function TX2UtPersistRegistryFiler.ReadFloat(const AName: String; out AValue: Extended): Boolean;
 begin
+  AValue  := 0;
   Result  := Registry.ValueExists(AName);
   if Result then
     AValue  := Registry.ReadFloat(AName);
 end;
 
 
-function TX2UtPersistRegistry.ReadString(const AName: String; out AValue: String): Boolean;
+function TX2UtPersistRegistryFiler.ReadStream(const AName: string; AStream: TStream): Boolean;
+var
+  bufferSize:     Integer;
+  buffer:         PChar;
+
 begin
   Result  := Registry.ValueExists(AName);
   if Result then
-    AValue  := Registry.ReadString(AName);
+  begin
+    bufferSize  := Registry.GetDataSize(AName);
+
+    if bufferSize > 0 then
+    begin
+      AStream.Size  := 0;
+
+      GetMem(buffer, bufferSize);
+      try
+        Registry.ReadBinaryData(AName, buffer^, bufferSize);
+        AStream.WriteBuffer(buffer^, bufferSize);
+      finally
+        FreeMem(buffer, bufferSize);
+      end;
+    end;
+  end;
 end;
 
 
-function TX2UtPersistRegistry.ReadInt64(const AName: String; out AValue: Int64): Boolean;
+function TX2UtPersistRegistryFiler.ReadString(const AName: String; out AValue: String): Boolean;
 begin
+  AValue  := '';
+  Result  := Registry.ValueExists(AName);
+  if Result then
+  begin
+    { Required for conversion of integer-based booleans }
+    if Registry.GetDataType(AName) = rdInteger then
+      AValue  := IntToStr(Registry.ReadInteger(AName))
+    else
+      AValue  := Registry.ReadString(AName);
+  end;
+end;
+
+
+function TX2UtPersistRegistryFiler.ReadInt64(const AName: String; out AValue: Int64): Boolean;
+begin
+  AValue  := 0;
   Result  := (Registry.GetDataSize(AName) = SizeOf(AValue));
   if Result then
     Registry.ReadBinaryData(AName, AValue, SizeOf(AValue));
 end;
 
 
-function TX2UtPersistRegistry.WriteInteger(const AName: String; AValue: Integer): Boolean;
+function TX2UtPersistRegistryFiler.WriteInteger(const AName: String; AValue: Integer): Boolean;
 begin
   Registry.WriteInteger(AName, AValue);
   Result  := True;
 end;
 
 
-function TX2UtPersistRegistry.WriteFloat(const AName: String; AValue: Extended): Boolean;
+function TX2UtPersistRegistryFiler.WriteFloat(const AName: String; AValue: Extended): Boolean;
 begin
   Registry.WriteFloat(AName, AValue);
   Result  := True;
 end;
 
 
-function TX2UtPersistRegistry.WriteString(const AName, AValue: String): Boolean;
+function TX2UtPersistRegistryFiler.WriteStream(const AName: string; AStream: TStream): Boolean;
+var
+  bufferSize:     Integer;
+  buffer:         PChar;
+
+begin
+  Result            := False;
+  AStream.Position  := 0;
+  bufferSize        := AStream.Size;
+
+  if bufferSize > 0 then
+  begin
+    GetMem(buffer, bufferSize);
+    try
+      AStream.ReadBuffer(buffer^, bufferSize);
+      Registry.WriteBinaryData(AName, buffer^, bufferSize);
+    finally
+      FreeMem(buffer, bufferSize);
+    end;
+
+    Result  := True;
+  end;
+end;
+
+
+function TX2UtPersistRegistryFiler.WriteString(const AName, AValue: String): Boolean;
 begin
   Registry.WriteString(AName, AValue);
   Result  := True;
 end;
 
 
-function TX2UtPersistRegistry.WriteInt64(const AName: String; AValue: Int64): Boolean;
+function TX2UtPersistRegistryFiler.WriteInt64(const AName: String; AValue: Int64): Boolean;
 begin
   Registry.WriteBinaryData(AName, AValue, SizeOf(AValue));
   Result  := True;
 end;
 
 
-procedure TX2UtPersistRegistry.ClearCollection();
-var
-  keyNames:   TStringList;
-  keyIndex:   Integer;
-
+procedure TX2UtPersistRegistryFiler.DeleteKey(const AName: string);
 begin
-  inherited;
+  Registry.DeleteValue(AName);
+end;
 
-  keyNames  := TStringList.Create();
-  try
-    Registry.GetKeyNames(keyNames);
 
-    for keyIndex := 0 to Pred(keyNames.Count) do
-      if SameTextS(keyNames[keyIndex], CollectionItemNamePrefix) then
-        Registry.DeleteKey(keyNames[keyIndex]);
-  finally
-    FreeAndNil(keyNames);
-  end;
+procedure TX2UtPersistRegistryFiler.DeleteSection(const AName: string);
+begin
+  Registry.DeleteKey(AName);
 end;
 
 end.

@@ -13,7 +13,7 @@ uses
   //IniParserTest in 'Units\IniParserTest.pas';
 
 begin
-//  MemChk();
+  ReportMemoryLeaksOnShutdown := True;
   RunRegisteredTests();
 end.
  
