@@ -247,6 +247,33 @@ end;
 
 
 procedure TX2Instance.Open();
+
+  procedure AdjustPrivileges();
+  var
+    tokenHandle: THandle;
+    luid: Int64;
+    newPrivileges: TTokenPrivileges;
+    returnLength: Cardinal;
+
+  begin
+    if OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES or
+                        TOKEN_QUERY, tokenHandle) then
+    begin
+      if LookupPrivilegeValue(nil, SE_CREATE_GLOBAL_NAME, luid) then
+      begin
+        FillChar(newPrivileges, SizeOf(TTokenPrivileges), #0);
+        newPrivileges.PrivilegeCount            := 1;
+        newPrivileges.Privileges[0].Luid        := luid;
+        newPrivileges.Privileges[0].Attributes  := SE_PRIVILEGE_ENABLED;
+
+        returnLength  := 0;
+        AdjustTokenPrivileges(tokenHandle, False, newPrivileges,
+                              SizeOf(TTokenPrivileges), nil, returnLength);
+      end;
+    end;
+  end;
+
+
 const
   ScopePrefix:    array[Boolean] of String  = ('Local\', 'Global\');
 
@@ -258,6 +285,11 @@ begin
     raise EInstanceNoAppID.Create('ApplicationID not specified');
 
   FFirstInstance  := True;
+
+  { Attempt to get global privileges (required for Terminal Services and
+    Vista) }
+  if Global then
+    AdjustPrivileges;
 
   { Attempt to create shared memory }
   SetLastError(0);
