@@ -129,7 +129,7 @@ type
     procedure GetKeys(const ADest: TStrings);
     procedure GetSections(const ADest: TStrings);
 
-    
+
     { IX2PersistReader }
     function Read(AObject: TObject): Boolean;
     function ReadBoolean(const AName: string; out AValue: Boolean): Boolean;
@@ -608,17 +608,32 @@ constructor TX2PersistSectionFilerProxy.Create(const AFiler: IX2PersistFiler; co
 var
   sections:       TSplitArray;
   sectionIndex:   Integer;
+  undoIndex:      Integer;
 
 begin
   inherited Create();
 
-  FFiler  := AFiler;
+  FFiler    := AFiler;
 
   Split(ASection, SectionSeparator, sections);
-  FSectionCount := Length(sections);
+  FSectionCount := 0;
 
   for sectionIndex := Low(sections) to High(sections) do
-    Filer.BeginSection(sections[sectionIndex]);
+  begin
+    if Length(sections[sectionIndex]) > 0 then
+    begin
+      if not Filer.BeginSection(sections[sectionIndex]) then
+      begin
+        { Undo all sections so far }
+        for undoIndex := 0 to Pred(SectionCount) do
+          Filer.EndSection();
+
+        FFiler  := nil;
+        Break;
+      end else
+        Inc(FSectionCount);
+    end;
+  end;
 end;
 
 
@@ -627,8 +642,9 @@ var
   sectionIndex:     Integer;
 
 begin
-  for sectionIndex := 0 to Pred(SectionCount) do
-    Filer.EndSection();
+  if Assigned(Filer) then
+    for sectionIndex := 0 to Pred(SectionCount) do
+      Filer.EndSection();
 
   inherited;
 end;
@@ -639,134 +655,177 @@ var
   filerInterface:   IInterface;
 
 begin
-  { Only return interfaces supported by the filer
-    - see TX2CustomPersistFiler.QueryInterface }
-  if Filer.QueryInterface(IID, filerInterface) = S_OK then
-    { ...but always return the proxy version of the interface to prevent
-         issues with reference counting. }
-    Result  := inherited QueryInterface(IID, Obj)
-  else
-    Result  := E_NOINTERFACE;
+  if Assigned(Filer) then
+  begin
+    { Only return interfaces supported by the filer
+      - see TX2CustomPersistFiler.QueryInterface }
+    if Filer.QueryInterface(IID, filerInterface) = S_OK then
+      { ...but always return the proxy version of the interface to prevent
+           issues with reference counting. }
+      Result  := inherited QueryInterface(IID, Obj)
+    else
+      Result  := E_NOINTERFACE;
+  end else
+    Result  := inherited QueryInterface(IID, Obj);
 end;
 
 
 function TX2PersistSectionFilerProxy.BeginSection(const AName: String): Boolean;
 begin
-  Result  := Filer.BeginSection(AName);
+  Result  := False;
+  if Assigned(Filer) then
+    Result  := Filer.BeginSection(AName);
 end;
 
 
 procedure TX2PersistSectionFilerProxy.EndSection();
 begin
-  Filer.EndSection();
+  if Assigned(Filer) then
+    Filer.EndSection();
 end;
 
 
 procedure TX2PersistSectionFilerProxy.GetKeys(const ADest: TStrings);
 begin
-  Filer.GetKeys(ADest);
+  if Assigned(Filer) then
+    Filer.GetKeys(ADest);
 end;
 
 
 procedure TX2PersistSectionFilerProxy.GetSections(const ADest: TStrings);
 begin
-  Filer.GetSections(ADest);
+  if Assigned(Filer) then
+    Filer.GetSections(ADest);
 end;
 
 
 function TX2PersistSectionFilerProxy.Read(AObject: TObject): Boolean;
 begin
-  Result  := (Filer as IX2PersistReader).Read(AObject);
+  Result  := False;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistReader).Read(AObject);
 end;
 
 
 function TX2PersistSectionFilerProxy.ReadBoolean(const AName: string; out AValue: Boolean): Boolean;
 begin
-  Result  := (Filer as IX2PersistReader).ReadBoolean(AName, AValue);
+  Result  := False;
+  AValue  := False;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistReader).ReadBoolean(AName, AValue);
 end;
 
 
 function TX2PersistSectionFilerProxy.ReadInteger(const AName: String; out AValue: Integer): Boolean;
 begin
-  Result  := (Filer as IX2PersistReader).ReadInteger(AName, AValue);
+  Result  := False;
+  AValue  := 0;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistReader).ReadInteger(AName, AValue);
 end;
 
 
 function TX2PersistSectionFilerProxy.ReadFloat(const AName: String; out AValue: Extended): Boolean;
 begin
-  Result  := (Filer as IX2PersistReader).ReadFloat(AName, AValue);
+  Result  := False;
+  AValue  := 0;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistReader).ReadFloat(AName, AValue);
 end;
 
 
 function TX2PersistSectionFilerProxy.ReadString(const AName: String; out AValue: String): Boolean;
 begin
-  Result  := (Filer as IX2PersistReader).ReadString(AName, AValue);
+  Result  := False;
+  AValue  := '';
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistReader).ReadString(AName, AValue);
 end;
 
 
 function TX2PersistSectionFilerProxy.ReadInt64(const AName: String; out AValue: Int64): Boolean;
 begin
-  Result  := (Filer as IX2PersistReader).ReadInt64(AName, AValue);
+  Result  := False;
+  AValue  := 0;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistReader).ReadInt64(AName, AValue);
 end;
 
 
 function TX2PersistSectionFilerProxy.ReadStream(const AName: String; AStream: TStream): Boolean;
 begin
-  Result  := (Filer as IX2PersistReader).ReadStream(AName, AStream);
+  Result  := False;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistReader).ReadStream(AName, AStream);
 end;
 
 
 procedure TX2PersistSectionFilerProxy.Write(AObject: TObject);
 begin
-  (Filer as IX2PersistWriter).Write(AObject);
+  if Assigned(Filer) then
+    (Filer as IX2PersistWriter).Write(AObject);
 end;
 
 
 function TX2PersistSectionFilerProxy.WriteBoolean(const AName: String; AValue: Boolean): Boolean;
 begin
-  Result  := (Filer as IX2PersistWriter).WriteBoolean(AName, AValue);
+  Result  := False;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistWriter).WriteBoolean(AName, AValue);
 end;
 
 
 function TX2PersistSectionFilerProxy.WriteInteger(const AName: String; AValue: Integer): Boolean;
 begin
-  Result  := (Filer as IX2PersistWriter).WriteInteger(AName, AValue);
+  Result  := False;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistWriter).WriteInteger(AName, AValue);
 end;
 
 
 function TX2PersistSectionFilerProxy.WriteFloat(const AName: String; AValue: Extended): Boolean;
 begin
-  Result  := (Filer as IX2PersistWriter).WriteFloat(AName, AValue);
+  Result  := False;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistWriter).WriteFloat(AName, AValue);
 end;
 
 
 function TX2PersistSectionFilerProxy.WriteString(const AName, AValue: String): Boolean;
 begin
-  Result  := (Filer as IX2PersistWriter).WriteString(AName, AValue);
+  Result  := False;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistWriter).WriteString(AName, AValue);
 end;
 
 
 function TX2PersistSectionFilerProxy.WriteInt64(const AName: String; AValue: Int64): Boolean;
 begin
-  Result  := (Filer as IX2PersistWriter).WriteInt64(AName, AValue);
+  Result  := False;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistWriter).WriteInt64(AName, AValue);
 end;
 
 
 function TX2PersistSectionFilerProxy.WriteStream(const AName: String; AStream: TStream): Boolean;
 begin
-  Result  := (Filer as IX2PersistWriter).WriteStream(AName, AStream);
+  Result  := False;
+  if Assigned(Filer) then
+    Result  := (Filer as IX2PersistWriter).WriteStream(AName, AStream);
 end;
 
 
 procedure TX2PersistSectionFilerProxy.DeleteKey(const AName: String);
 begin
-  (Filer as IX2PersistWriter).DeleteKey(AName);
+  if Assigned(Filer) then
+    (Filer as IX2PersistWriter).DeleteKey(AName);
 end;
 
 
 procedure TX2PersistSectionFilerProxy.DeleteSection(const AName: String);
 begin
-  (Filer as IX2PersistWriter).DeleteSection(AName);
+  if Assigned(Filer) then
+    (Filer as IX2PersistWriter).DeleteSection(AName);
 end;
 
 end.

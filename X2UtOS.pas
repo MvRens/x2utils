@@ -16,7 +16,7 @@ uses
 type
   //:$ Enumeration of the recognized Operating System versions
   TX2OSVersion  = (osWin95, osWin98, osWinME, osWinNT3, osWinNT4,
-                   osWin2K, osWinXP, osWin2003, osUnknown);
+                   osWin2K, osWinXP, osWin2003, osWinVista, osUnknown);
 
   //:$ Record to hold the Common Controls version
   TX2CCVersion  = record
@@ -151,42 +151,44 @@ var
 begin
   FVersion  := osUnknown;
 
-  // Get version information
+  { Get version information }
   pVersion.dwOSVersionInfoSize := SizeOf(TOSVersionInfo);
   GetVersionEx(pVersion);
 
-  with FVersionEx do begin
-    // No Kylix support yet, sorry!
+  with FVersionEx do
+  begin
+    { No Kylix support yet, sorry! }
     RawInfo := pVersion;
     Name    := 'Windows';
 
-    // Analyze version
     case pVersion.dwMajorVersion of
-      3:      // Windows NT 3.51
+      3:      { Windows NT 3.51 }
         FVersion  := osWinNT3;
-      4:      // Windows 95/98/ME/NT 4
+      4:      { Windows 95/98/ME/NT 4 }
         case pVersion.dwMinorVersion of
-          0:  // Windows 95/NT 4
+          0:  { Windows 95/NT 4 }
             case pVersion.dwPlatformId of
-              VER_PLATFORM_WIN32_NT:        // Windows NT 4
+              VER_PLATFORM_WIN32_NT:        { Windows NT 4 }
                 FVersion  := osWinNT4;
-              VER_PLATFORM_WIN32_WINDOWS:   // Windows 95
+              VER_PLATFORM_WIN32_WINDOWS:   { Windows 95 }
                 FVersion  := osWin95;
             end;
-          10: // Windows 98
+          10: { Windows 98 }
             FVersion  := osWin98;
-          90: // Windows ME
+          90: { Windows ME }
             FVersion  := osWinME;
         end;
-      5:      // Windows 2000/XP/2003
+      5:      { Windows 2000/XP/2003 }
         case pVersion.dwMinorVersion of
-          0:  // Windows 2000
+          0:  { Windows 2000 }
             FVersion  := osWin2K;
-          1:  // Windows XP
+          1:  { Windows XP }
             FVersion  := osWinXP;
-          2:  // Windows Server 2003
+          2:  { Windows Server 2003 }
             FVersion  := osWin2003;
         end;
+      6:      { Windows Vista/Server 2008 }
+        FVersion  := osWinVista;
     end;
 
     case Version of
@@ -198,6 +200,7 @@ begin
       osWin2K:      VersionString := '2000';
       osWinXP:      VersionString := 'XP';
       osWin2003:    VersionString := 'Server 2003';
+      osWinVista:   VersionString := 'Vista';
       osUnknown:    VersionString := Format('%d.%d', [pVersion.dwMajorVersion,
                                                       pVersion.dwMinorVersion]);
     end;

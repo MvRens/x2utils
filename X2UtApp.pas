@@ -136,6 +136,7 @@ type
     property Strings:         TX2AppVersionStrings  read FStrings;
   end;
 
+
   TX2App  = class(TObject)
   private
     FVersion:         TX2AppVersion;
@@ -143,6 +144,8 @@ type
     FPath:            String;
     FMainPath:        String;
     FUserPath:        String;
+
+    function GetVersion(): TX2AppVersion;
   protected
     function GetModule(const AModule: THandle): String; virtual;
     procedure GetPath(); virtual;
@@ -181,7 +184,7 @@ type
     property UserPath:  String          read FUserPath;
 
     //:$ Contains the application's version information
-    property Version:   TX2AppVersion   read FVersion;
+    property Version:   TX2AppVersion   read GetVersion;
   end;
 
   //:$ Returns a singleton App object
@@ -379,7 +382,6 @@ begin
   inherited;
 
   GetPath();
-  FVersion  := TX2AppVersion.Create(FFileName);
 end;
 
 destructor TX2App.Destroy();
@@ -432,6 +434,15 @@ begin
   finally
     ifMalloc  := nil;
   end;
+end;
+
+
+function TX2App.GetVersion(): TX2AppVersion;
+begin
+  if not Assigned(FVersion) then
+    FVersion  := TX2AppVersion.Create(FFileName);
+
+  Result  := FVersion;
 end;
 
 

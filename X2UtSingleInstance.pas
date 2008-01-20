@@ -525,7 +525,7 @@ var
 
 begin
   with Instance do
-begin
+  begin
     ApplicationID := AApplicationID;
     Global        := AGlobal;
     Active        := True;

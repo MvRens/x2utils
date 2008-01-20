@@ -269,7 +269,7 @@ begin
   begin
     { Required for conversion of integer-based booleans }
     if Registry.GetDataType(AName) = rdInteger then
-      AValue  := IntToStr(Registry.ReadInteger(AName))
+      AValue  := BoolToStr(Registry.ReadBool(AName), True)
     else
       AValue  := Registry.ReadString(AName);
   end;
