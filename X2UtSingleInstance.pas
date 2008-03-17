@@ -199,7 +199,8 @@ uses
 
 
 const
-  WindowClass     = 'X2UtSingleInstance.Window';
+  WindowClass           = 'X2UtSingleInstance.Window';
+  SE_CREATE_GLOBAL_NAME = 'SeCreateGlobalPrivilege';
 
 
 var
