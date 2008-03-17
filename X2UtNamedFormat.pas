@@ -9,22 +9,39 @@
 unit X2UtNamedFormat;
 
 interface
+uses
+  Classes;
+
+
+type
+  TNamedFormatStringList  = class(TStringList)
+  public
+    procedure AddLn();
+
+    function Format(AParams: array of const): String;
+  end;
+
+
   {
     AFormat uses the same format strings as SysUtils.Format, where each
-    format specifier may use a named instead of a numeric index.
+    format specifier may use a named instead of a numeric index, surrounded by
+    <>, eg:
+
+      %<Value1>:s %<Value2>:.2d
+      
 
     AParams contains alternating the parameter name and it's value.
 
     Note: NamedFormat works by mapping names to indices and passing the result
-    to SysUtils.Format. Unnamed specifiers will therefore be affected by
-    named specifiers! It is recommended to name all specifiers.
+    to SysUtils.Format. Unnamed or existing indexed specifiers will therefore
+    be affected by named specifiers! It is strongly recommended to name all
+    specifiers.
   }
   function NamedFormat(const AFormat: String; AParams: array of const): String;
 
   
 implementation
 uses
-  Classes,
   SysUtils;
 
 
@@ -33,8 +50,10 @@ type
 
 
 const
-  SpecifierChar   = '%';
-  ValidNameChars  = ['A'..'Z', 'a'..'z', '0'..'9'];
+  SpecifierChar       = '%';
+  SpecifierNameStart  = '<';
+  SpecifierNameEnd    = '>';
+  ValidNameChars      = ['A'..'Z', 'a'..'z', '0'..'9', '_'];
 
 
 procedure StreamWriteChar(const AStream: TStream; const AValue: Char);
@@ -59,7 +78,7 @@ begin
 
   while position < AEnd do
   begin
-    if position^ = ':' then
+    if position^ = SpecifierNameEnd then
     begin
       Result  := position;
       break;
@@ -116,9 +135,11 @@ begin
           StreamWriteChar(formatStream, currentPos^);
           Inc(currentPos);
 
-          { Check if this is not an escape character }
-          if (currentPos < formatEnd) and (currentPos^ <> SpecifierChar) then
+          { Check if this is indeed a named specifier }
+          if (currentPos < formatEnd) and (currentPos^ = SpecifierNameStart) then
           begin
+            Inc(currentPos);
+
             nameStart := currentPos;
             nameEnd   := FindNameEnd(currentPos, formatEnd);
 
@@ -131,12 +152,13 @@ begin
                 specifierIndex  := paramNames.Add(name);
 
               StreamWriteString(formatStream, IntToStr(specifierIndex));
+
               currentPos  := nameEnd;
             end;
           end;
-        end;
+        end else
+          StreamWriteChar(formatStream, currentPos^);
 
-        StreamWriteChar(formatStream, currentPos^);
         Inc(currentPos);
       end;
 
@@ -165,11 +187,9 @@ begin
       Inc(paramIndex);
 
       specifierIndex  := paramNames.IndexOf(name);
-      if specifierIndex = -1 then
-        raise Exception.CreateFmt('Parameter "%s" could not be found in the format string',
-                                  [name]);
+      if specifierIndex > -1 then
+        paramValues[specifierIndex] := AParams[paramIndex];
 
-      paramValues[specifierIndex] := AParams[paramIndex];
       Inc(paramIndex);
     end;
   finally
@@ -179,5 +199,17 @@ begin
   Result  := Format(formatString, paramValues);
 end;
 
+
+{ TNamedFormatStringList }
+procedure TNamedFormatStringList.AddLn;
+begin
+  Add('');
+end;
+
+
+function TNamedFormatStringList.Format(AParams: array of const): String;
+begin
+  Result := NamedFormat(Text, AParams);
+end;
 
 end.
