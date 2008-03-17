@@ -91,7 +91,7 @@ ImageBase=4194304
 ExeDescription=X2Utils
 [Directories]
 OutputDir=
-UnitOutputDir=..\..\Lib\D7
+UnitOutputDir=P:\Algemeen\lib
 PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=
@@ -105,6 +105,10 @@ HostApplication=
 Launcher=
 UseLauncher=0
 DebugCWD=
+[Language]
+ActiveLang=
+ProjectLang=
+RootDir=
 [Version Info]
 IncludeVerInfo=1
 AutoIncBuild=0
@@ -130,6 +134,8 @@ OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
 Comments=
+[Excluded Packages]
+C:\Program Files\Borland\Indy\D7\dclIndy70.bpl=Internet Direct (Indy) for D7 Property and Component Editors
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
@@ -138,11 +144,12 @@ Count=2
 Item0=..\..
 Item1=F:\Development\VDarts\Packages
 [HistoryLists\hlUnitOutputDirectory]
-Count=4
-Item0=..\..\Lib\D7
-Item1=..\..\Dcu
-Item2=..\..\..\Dcu
-Item3=Dcu
+Count=5
+Item0=P:\Algemeen\lib
+Item1=..\..\Lib\D7
+Item2=..\..\Dcu
+Item3=..\..\..\Dcu
+Item4=Dcu
 [HistoryLists\hlBPLOutput]
 Count=3
 Item0=..\..\Lib\D7

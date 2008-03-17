@@ -113,9 +113,8 @@ type
     FFiler:           IX2PersistFiler;
     FSectionCount:    Integer;
   protected
-    property SectionCount:    Integer           read FSectionCount;
-
     property Filer:           IX2PersistFiler   read FFiler;
+    property SectionCount:    Integer           read FSectionCount;
 
 
     { IInterface }

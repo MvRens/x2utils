@@ -44,6 +44,22 @@ begin
 end;
 
 
+function GetTempFile(const APrefix: String): String; overload;
+var
+  tempPath: array[0..MAX_PATH] of Char;
+  tempFile: array[0..MAX_PATH] of Char;
+
+begin
+  FillChar(tempPath, SizeOf(tempPath), #0);
+  FillChar(tempFile, SizeOf(tempFile), #0);
+
+  Windows.GetTempPath(SizeOf(tempPath), @tempPath);
+  Windows.GetTempFileName(@tempPath, PChar(APrefix), 0, @tempFile);
+
+  Result := String(tempFile);
+end;
+
+
 function GetTempFile(const APath, AFileName, AExtension: String): String; overload;
 var
   iCounter:         Integer;
@@ -53,7 +69,7 @@ var
 begin
   iCounter    := 0;
   sBase       := IncludeTrailingPathDelimiter(APath);
-  
+
   if not ForceDirectories(sBase) then
   begin
     Result    := '';
@@ -74,6 +90,7 @@ begin
   end;
 end;
 
+
 function GetTempFile(const APath, AFileName: String): String; overload;
 var
   sExt:     String;
@@ -84,19 +101,22 @@ begin
                       sExt);
 end;
 
-function GetTempAppDataFile(const APath, AFileName, AExtension: String): String; overload;
+
+function GetTempAppDataFile(const ASubPath, AFileName, AExtension: String): String; overload;
 begin
-  Result  := GetTempFile(GetAppDataPath + APath, AFileName, AExtension);
+  Result  := GetTempFile(GetAppDataPath + ASubPath, AFileName, AExtension);
 end;
 
-function GetTempAppDataFile(const APath, AFileName: String): String; overload;
+
+function GetTempAppDataFile(const ASubPath, AFileName: String): String; overload;
 var
   sExt:     String;
 
 begin
   sExt    := ExtractFileExt(AFileName);
-  Result  := GetTempAppDataFile(APath, Copy(AFileName, 1, Length(AFileName) - Length(sExt)),
-                                sExt);
+  Result  := GetTempAppDataFile(ASubPath, Copy(AFileName, 1,
+                                               Length(AFileName) - Length(sExt)),
+                                               sExt);
 end;
 
 
@@ -104,6 +124,7 @@ function IsValidFileChar(const AChar: Char): Boolean;
 begin
   Result  := not (AChar in ['\', '/', ':', '*', '?', '"', '<', '>', '|']);
 end;
+
 
 function CheckValidFileName(var AFileName: String; const AReplacement: Char): Boolean;
 var

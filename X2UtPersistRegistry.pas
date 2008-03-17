@@ -1,5 +1,5 @@
 {
-  :: X2UtPersistRegistry implements persistency to the Windows   Registry.
+  :: X2UtPersistRegistry implements persistency to the Windows Registry.
   ::
   :: Last changed:    $Date$
   :: Revision:        $Rev$
