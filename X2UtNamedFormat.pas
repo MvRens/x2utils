@@ -106,6 +106,7 @@ var
   paramNames:     TStringList;
   paramValues:    array of TVarRec;
   specifierIndex: Integer;
+  errorMsg:       String;
 
 begin
   if Length(AParams) mod 2 = 1 then
@@ -173,7 +174,7 @@ begin
     while paramIndex < High(AParams) do
     begin
       param := AParams[paramIndex];
-      
+
       case param.VType of
         vtChar:       name  := param.VChar;
         vtString:     name  := param.VString^;
@@ -192,11 +193,27 @@ begin
 
       Inc(paramIndex);
     end;
+
+    try
+      Result  := Format(formatString, paramValues);
+    except
+      on E:EConvertError do
+      begin
+        errorMsg  := E.Message;
+
+        { Translate specifiers in error messages back to names }
+        for paramIndex := 0 to Pred(paramNames.Count) do
+          errorMsg  := StringReplace(errorMsg, SpecifierChar + IntToStr(paramIndex) + ':',
+                                     SpecifierChar + SpecifierNameStart +
+                                     paramNames[paramIndex] + SpecifierNameEnd + ':',
+                                     [rfReplaceAll]);
+
+        raise EConvertError.Create(errorMsg);
+      end;
+    end;
   finally
     FreeAndNil(paramNames);
   end;
-
-  Result  := Format(formatString, paramValues);
 end;
 
 
