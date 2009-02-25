@@ -46,7 +46,7 @@ type
   TX2CustomHash   = class;
 
 
-  {$IFDEF D2005}
+  {$IFDEF D2005PLUS}
   {$REGION 'Internal hash structures'}
   {$ENDIF}
   {
@@ -97,7 +97,7 @@ type
 
     property Current:       PX2HashValue  read GetCurrent;
   end;
-  {$IFDEF D2005}
+  {$IFDEF D2005PLUS}
   {$ENDREGION}
 
   {$REGION 'Internal value managers'}
@@ -168,7 +168,7 @@ type
     function Compare(const AData: Pointer; const AValue: Pointer;
                      const ASize: Cardinal): Boolean; override;
   end;
-  {$IFDEF D2005}
+  {$IFDEF D2005PLUS}
   {$ENDREGION}
 
   {$REGION 'Delphi 2006 enumerator support'}
@@ -233,7 +233,7 @@ type
   public
     property Current:     String  read GetCurrent;
   end;
-  {$IFDEF D2005}
+  {$IFDEF D2005PLUS}
   {$ENDREGION}
 
   {$REGION 'Abstract hash implementation'}
@@ -288,7 +288,7 @@ type
 
     property Count:     Integer read FCount;
   end;
-  {$IFDEF D2005}
+  {$IFDEF D2005PLUS}
   {$ENDREGION}
 
   {$REGION 'Base hash classes'}
@@ -368,7 +368,7 @@ type
 
     property CurrentKey:      String  read GetCurrentKey;
   end;
-  {$IFDEF D2005}
+  {$IFDEF D2005PLUS}
   {$ENDREGION}
 
   {$REGION 'Concrete hash classes'}
@@ -632,7 +632,7 @@ type
     property CurrentValue:            String  read GetCurrentValue;
     property Values[Key: String]:     String  read GetValue write SetValue; default;
   end;
-  {$IFDEF D2005}
+  {$IFDEF D2005PLUS}
   {$ENDREGION}
   {$ENDIF}
 
@@ -689,7 +689,7 @@ begin
 end;
 
 
-{$IFDEF D2005}
+{$IFDEF D2005PLUS}
 {$REGION 'Internal hash structures'}
 {$ENDIF}
 {========================================
@@ -793,7 +793,7 @@ begin
         break;
   until False;
 end;
-{$IFDEF D2005}
+{$IFDEF D2005PLUS}
 {$ENDREGION}
 
 
@@ -969,7 +969,7 @@ begin
 
   Result  := CompareMem(pSource, AValue, ASize);
 end;
-{$IFDEF D2005}
+{$IFDEF D2005PLUS}
 {$ENDREGION}
 
 
@@ -1308,7 +1308,7 @@ begin
 
   Result  := Cursor.Next();
 end;
-{$IFDEF D2005}
+{$IFDEF D2005PLUS}
 {$ENDREGION}
 
 
@@ -1377,7 +1377,7 @@ function TX2HashStringEnumerator.GetCurrent(): String;
 begin
   Result  := TX2HashStringManager(Manager).ToValue(Cursor);
 end;
-{$IFDEF D2005}
+{$IFDEF D2005PLUS}
 {$ENDREGION}
 
 
@@ -1526,7 +1526,7 @@ function TX2CustomStringHash.Delete(const AKey: String): Boolean;
 begin
   Result  := inherited Delete(PChar(AKey), Length(AKey));
 end;
-{$IFDEF D2005}
+{$IFDEF D2005PLUS}
 {$ENDREGION}
 
 
@@ -2087,7 +2087,7 @@ begin
   inherited SetValue(Find(Key, True),
                      TX2HashStringManager(ValueManager).ToPointer(Value));
 end;
-{$IFDEF D2005}
+{$IFDEF D2005PLUS}
 {$ENDREGION}
 {$ENDIF}
 

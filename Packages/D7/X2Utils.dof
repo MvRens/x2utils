@@ -91,9 +91,9 @@ ImageBase=4194304
 ExeDescription=X2Utils
 [Directories]
 OutputDir=
-UnitOutputDir=P:\Algemeen\lib
-PackageDLLOutputDir=
-PackageDCPOutputDir=
+UnitOutputDir=$(DELPHILIB)
+PackageDLLOutputDir=$(DELPHIBIN)
+PackageDCPOutputDir=$(DELPHIBIN)
 SearchPath=
 Packages=vcl;rtl;dbrtl;vcldb;vclx;dss;dsnapcrba;dsnapcon;inetdb;webdsnap;websnap;dbxcds;Irc;parsdpk;hotspotter
 Conditionals=
@@ -105,10 +105,6 @@ HostApplication=
 Launcher=
 UseLauncher=0
 DebugCWD=
-[Language]
-ActiveLang=
-ProjectLang=
-RootDir=
 [Version Info]
 IncludeVerInfo=1
 AutoIncBuild=0
@@ -135,7 +131,9 @@ ProductName=
 ProductVersion=1.0.0.0
 Comments=
 [Excluded Packages]
-C:\Program Files\Borland\Indy\D7\dclIndy70.bpl=Internet Direct (Indy) for D7 Property and Component Editors
+P:\Algemeen\bin\xtx_d7.bpl=(untitled)
+P:\Algemeen\bin\xdevice9.bpl=(untitled)
+P:\algemeen\bin\VirtualTreesD7D.bpl=(untitled)
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
@@ -144,14 +142,19 @@ Count=2
 Item0=..\..
 Item1=F:\Development\VDarts\Packages
 [HistoryLists\hlUnitOutputDirectory]
-Count=5
-Item0=P:\Algemeen\lib
-Item1=..\..\Lib\D7
-Item2=..\..\Dcu
-Item3=..\..\..\Dcu
-Item4=Dcu
+Count=6
+Item0=$(DELPHILIB)
+Item1=P:\Algemeen\lib
+Item2=..\..\Lib\D7
+Item3=..\..\Dcu
+Item4=..\..\..\Dcu
+Item5=Dcu
 [HistoryLists\hlBPLOutput]
-Count=3
-Item0=..\..\Lib\D7
-Item1=Lib\D7
-Item2=..\Lib\D7
+Count=4
+Item0=$(DELPHIBIN)
+Item1=..\..\Lib\D7
+Item2=Lib\D7
+Item3=..\Lib\D7
+[HistoryLists\hlDCPOutput]
+Count=1
+Item0=$(DELPHIBIN)

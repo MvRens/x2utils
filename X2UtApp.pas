@@ -409,7 +409,7 @@ end;
 procedure TX2App.GetPath();
   function FixPath(const APath: String): String;
   begin
-    Result  := {$IFDEF D6}IncludeTrailingPathDelimiter
+    Result  := {$IFDEF D6PLUS}IncludeTrailingPathDelimiter
                {$ELSE}IncludeTrailingBackslash{$ENDIF}
                (APath);
   end;

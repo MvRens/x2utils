@@ -9,7 +9,7 @@
 unit X2UtBits;
 
 {$I X2UtCompilerVersion.inc}
-{$IFDEF D7}
+{$IFDEF D7PLUS}
   {$WARN UNSAFE_CODE OFF}
 {$ENDIF}
 

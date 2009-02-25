@@ -56,10 +56,10 @@ uses
   function InRange(const AValue, AMin, AMax: Int64): Int64; overload;
 
   //:$ Returns the width of a rectangle
-  function RectWidth(const ARect: TRect): Integer; {$IFDEF VER180}inline;{$ENDIF}
+  function RectWidth(const ARect: TRect): Integer; {$IFDEF D2006PLUS}inline;{$ENDIF}
 
   //:$ Returns the height of a rectangle
-  function RectHeight(const ARect: TRect): Integer; {$IFDEF VER180}inline;{$ENDIF}
+  function RectHeight(const ARect: TRect): Integer; {$IFDEF D2006PLUS}inline;{$ENDIF}
 
 
 implementation

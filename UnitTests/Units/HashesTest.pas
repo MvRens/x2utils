@@ -147,7 +147,7 @@ var
   sKey:         String;
 
 begin
-  {$IFDEF D2006}
+  {$IFDEF D2006PLUS}
   FillTestItems();
   FillChar(aPresent, SizeOf(aPresent), #0);
 
@@ -249,7 +249,7 @@ var
   pKey:         Pointer;
 
 begin
-  {$IFDEF D2006}
+  {$IFDEF D2006PLUS}
   FillTestItems();
   FillChar(aPresent, SizeOf(aPresent), #0);
 
