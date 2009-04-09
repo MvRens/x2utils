@@ -10,6 +10,7 @@ type
   private
     FEnvironment:       TStrings;
     FCommandLine:       String;
+    FVisible:           Boolean;
     FWorkingPath:       String;
   protected
     function BuildEnvironment(): String;
@@ -25,6 +26,7 @@ type
 
     property CommandLine:   String    read FCommandLine write FCommandLine;
     property Environment:   TStrings  read FEnvironment;
+    property Visible:       Boolean   read FVisible     write FVisible;
     property WorkingPath:   String    read FWorkingPath write FWorkingPath;
   end;
 
@@ -40,6 +42,7 @@ begin
   inherited;
 
   FEnvironment  := TStringList.Create();
+  FVisible      := False;
   FWorkingPath  := GetCurrentDir();
 end;
 
@@ -104,6 +107,9 @@ var
   startupInfo: TStartupInfo;
   writePipe: Cardinal;
   bytesRead: Cardinal;
+  newConsole: Boolean;
+  consoleOutput: THandle;
+  bytesWritten: Cardinal;
 
 begin
   Result := False;
@@ -133,15 +139,33 @@ begin
       CloseHandle(writePipe);
       writePipe  := 0;
 
-      GetMem(buffer, BufferSize);
+      newConsole := False;
+      consoleOutput := 0;
+      if Visible then
+      begin
+        newConsole := AllocConsole;
+        consoleOutput := GetStdHandle(STD_OUTPUT_HANDLE);
+      end;
+
       try
-        repeat
-          ReadFile(readPipe, buffer^, BufferSize, bytesRead, nil);
-          if bytesRead > 0 then
-            AStream.WriteBuffer(buffer^, bytesRead);
-        until bytesRead = 0;
+        GetMem(buffer, BufferSize);
+        try
+          repeat
+            ReadFile(readPipe, buffer^, BufferSize, bytesRead, nil);
+            if bytesRead > 0 then
+            begin
+              AStream.WriteBuffer(buffer^, bytesRead);
+
+              if consoleOutput <> 0 then
+                WriteFile(consoleOutput, buffer^, bytesRead, bytesWritten, nil);
+            end;
+          until bytesRead = 0;
+        finally
+          FreeMem(buffer, BufferSize);
+        end;
       finally
-        FreeMem(buffer, BufferSize);
+        if newConsole then
+          FreeConsole;
       end;
 
       GetExitCodeProcess(processInfo.hProcess, AExitCode);
