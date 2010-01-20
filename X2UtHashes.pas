@@ -1123,7 +1123,7 @@ begin
                 pNext         := pValue^.Next;
                 pValue^.Next  := nil;
 
-                InternalFind(pBucket, ROR(Hash(pKey, iKey), pBucket^.Level * 8),
+                InternalFind(pBucket, ROR(Hash(@pKey, iKey), pBucket^.Level * 8),
                              pKey, iKey, True, pValue);
 
 
