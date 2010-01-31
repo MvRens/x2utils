@@ -14,9 +14,25 @@ uses
   Windows;
 
 type
+  TOSVersionInfoEx = packed record
+    dwOSVersionInfoSize: DWORD;
+    dwMajorVersion: DWORD;
+    dwMinorVersion: DWORD;
+    dwBuildNumber: DWORD;
+    dwPlatformId: DWORD;
+    szCSDVersion: array[0..127] of AnsiChar;
+    wServicePackMajor: WORD;
+    wServicePackMinor: WORD;
+    wSuiteMask: WORD;
+    wProductType: Byte;
+    wReserved: Byte;
+  end;
+
+
   //:$ Enumeration of the recognized Operating System versions
   TX2OSVersion  = (osWin95, osWin98, osWinME, osWinNT3, osWinNT4,
-                   osWin2K, osWinXP, osWin2003, osWinVista, osUnknown);
+                   osWin2K, osWinXP, osWin2003, osWinVista, osWinServer2008,
+                   osWin7, osUnknown);
 
   //:$ Record to hold the Common Controls version
   TX2CCVersion  = record
@@ -33,19 +49,19 @@ type
     FName:            String;
     FVersionString:   String;
     FBuild:           Cardinal;
-    FRawInfo:         TOSVersionInfo;
+    FRawInfo:         TOSVersionInfoEx;
   public
     //:$ Contains the name of the OS
-    property Name:            String          read FName          write FName;
+    property Name:            String            read FName          write FName;
 
     //:$ Contains a string representation of the OS' version
-    property VersionString:   String          read FVersionString write FVersionString;
+    property VersionString:   String            read FVersionString write FVersionString;
 
     //:$ Contains the build number of the OS
-    property Build:           Cardinal        read FBuild         write FBuild;
+    property Build:           Cardinal          read FBuild         write FBuild;
 
     //:$ Contains the raw version information as provided by the OS
-    property RawInfo:         TOSVersionInfo  read FRawInfo       write FRawInfo;
+    property RawInfo:         TOSVersionInfoEx  read FRawInfo       write FRawInfo;
   end;
 
   {
@@ -57,21 +73,26 @@ type
     FVersion:         TX2OSVersion;
     FVersionEx:       TX2OSVersionEx;
 
-    function GetXPManifest(): Boolean;
+    function GetSupportsUAC: Boolean;
+    function GetXPManifest: Boolean;
   protected
-    procedure GetVersion(); virtual;
-    procedure GetCCVersion(); virtual;
+    procedure GetVersion; virtual;
+    procedure GetCCVersion; virtual;
   public
-    constructor Create();
-    destructor Destroy(); override;
+    constructor Create;
+    destructor Destroy; override;
 
     //:$ Returns the formatted version information
     //:: If Build is False, the return value will not include the
     //:: OS' Build number.
     function FormatVersion(Build: Boolean = True): String;
 
+
     //:$ Contains the Common Controls version
     property ComCtlVersion: TX2CCVersion    read FCCVersion;
+
+    //:$ Checks if the OS supports User Account Control
+    property SupportsUAC: Boolean read GetSupportsUAC;
 
     //:$ Checks if the application uses an XP manifest
     //:: If present, Common Controls version 6 or higher is available.
@@ -84,8 +105,30 @@ type
     property VersionEx:     TX2OSVersionEx  read FVersionEx;
   end;
 
-  function OS(): TX2OS;
+  function OS: TX2OS;
 
+
+const
+  { NT Product types: used by dwProductType field }
+  VER_NT_WORKSTATION = $0000001;
+  VER_NT_DOMAIN_CONTROLLER = $0000002;
+  VER_NT_SERVER = $0000003;
+
+  { NT product suite mask values: used by wSuiteMask field }
+  VER_SUITE_SMALLBUSINESS = $00000001;
+  VER_SUITE_ENTERPRISE = $00000002;
+  VER_SUITE_BACKOFFICE = $00000004;
+  VER_SUITE_COMMUNICATIONS = $00000008;
+  VER_SUITE_TERMINAL = $00000010;
+  VER_SUITE_SMALLBUSINESS_RESTRICTED = $00000020;
+  VER_SUITE_EMBEDDEDNT = $00000040;
+  VER_SUITE_DATACENTER = $00000080;
+  VER_SUITE_SINGLEUSERTS = $00000100;
+  VER_SUITE_PERSONAL = $00000200;
+  VER_SUITE_SERVERAPPLIANCE = $00000400;
+  VER_SUITE_BLADE = VER_SUITE_SERVERAPPLIANCE;
+
+  
 implementation
 uses
   SysUtils;
@@ -115,7 +158,7 @@ var
 function OS;
 begin
   if not Assigned(GOS) then
-    GOS := TX2OS.Create();
+    GOS := TX2OS.Create;
 
   Result  := GOS;
 end;
@@ -128,9 +171,9 @@ constructor TX2OS.Create;
 begin
   inherited;
 
-  FVersionEx  := TX2OSVersionEx.Create();
-  GetVersion();
-  GetCCVersion();
+  FVersionEx  := TX2OSVersionEx.Create;
+  GetVersion;
+  GetCCVersion;
 end;
 
 destructor TX2OS.Destroy;
@@ -146,73 +189,102 @@ end;
 ========================================}
 procedure TX2OS.GetVersion;
 var
-  pVersion:       TOSVersionInfo;
+  versionInfo:    TOSVersionInfoEx;
+  versionInfoPtr: POSVersionInfo;
 
 begin
   FVersion  := osUnknown;
 
   { Get version information }
-  pVersion.dwOSVersionInfoSize := SizeOf(TOSVersionInfo);
-  GetVersionEx(pVersion);
+  FillChar(versionInfo, SizeOf(versionInfo), 0);
+  versionInfo.dwOSVersionInfoSize := SizeOf(TOSVersionInfoEx);
+
+  versionInfoPtr := @versionInfo;
+
+  if not GetVersionEx(versionInfoPtr^) then
+  begin
+    { Maybe this is an older Windows version, not supporting the Ex fields }
+    versionInfo.dwOSVersionInfoSize := SizeOf(TOSVersionInfo);
+    if not GetVersionEx(versionInfoPtr^) then
+      RaiseLastOSError;
+  end;
 
   with FVersionEx do
   begin
     { No Kylix support yet, sorry! }
-    RawInfo := pVersion;
+    RawInfo := versionInfo;
     Name    := 'Windows';
 
-    case pVersion.dwMajorVersion of
+    case versionInfo.dwMajorVersion of
       3:      { Windows NT 3.51 }
-        FVersion  := osWinNT3;
+        FVersion := osWinNT3;
       4:      { Windows 95/98/ME/NT 4 }
-        case pVersion.dwMinorVersion of
+        case versionInfo.dwMinorVersion of
           0:  { Windows 95/NT 4 }
-            case pVersion.dwPlatformId of
+            case versionInfo.dwPlatformId of
               VER_PLATFORM_WIN32_NT:        { Windows NT 4 }
-                FVersion  := osWinNT4;
+                FVersion := osWinNT4;
               VER_PLATFORM_WIN32_WINDOWS:   { Windows 95 }
-                FVersion  := osWin95;
+                FVersion := osWin95;
             end;
           10: { Windows 98 }
-            FVersion  := osWin98;
+            FVersion := osWin98;
           90: { Windows ME }
-            FVersion  := osWinME;
+            FVersion := osWinME;
         end;
       5:      { Windows 2000/XP/2003 }
-        case pVersion.dwMinorVersion of
+        case versionInfo.dwMinorVersion of
           0:  { Windows 2000 }
-            FVersion  := osWin2K;
+            FVersion := osWin2K;
           1:  { Windows XP }
-            FVersion  := osWinXP;
+            FVersion := osWinXP;
           2:  { Windows Server 2003 }
-            FVersion  := osWin2003;
+            FVersion := osWin2003;
         end;
-      6:      { Windows Vista/Server 2008 }
-        FVersion  := osWinVista;
+      6:      { Windows Vista/Server 2008/7 }
+        if versionInfo.wProductType = VER_NT_WORKSTATION then
+        begin
+          case versionInfo.dwMinorVersion of
+            0: { Windows Vista }
+              FVersion := osWinVista;
+            1: { Windows 7 }
+              FVersion := osWin7;
+          end;
+        end else
+        begin
+          case versionInfo.dwMinorVersion of
+            0, { Windows Server 2008 }
+            1: { Windows Server 2008 R2 }
+              FVersion := osWinServer2008;
+          end;
+        end;
     end;
 
     case Version of
-      osWin95:      VersionString := '95';
-      osWin98:      VersionString := '98';
-      osWinME:      VersionString := 'ME';
-      osWinNT3:     VersionString := 'NT 3.51';
-      osWinNT4:     VersionString := 'NT 4';
-      osWin2K:      VersionString := '2000';
-      osWinXP:      VersionString := 'XP';
-      osWin2003:    VersionString := 'Server 2003';
-      osWinVista:   VersionString := 'Vista';
-      osUnknown:    VersionString := Format('%d.%d', [pVersion.dwMajorVersion,
-                                                      pVersion.dwMinorVersion]);
+      osWin95:          VersionString := '95';
+      osWin98:          VersionString := '98';
+      osWinME:          VersionString := 'ME';
+      osWinNT3:         VersionString := 'NT 3.51';
+      osWinNT4:         VersionString := 'NT 4';
+      osWin2K:          VersionString := '2000';
+      osWinXP:          VersionString := 'XP';
+      osWin2003:        VersionString := 'Server 2003';
+      osWinVista:       VersionString := 'Vista';
+      osWin7:           VersionString := '7';
+      osWinServer2008:  VersionString := 'Server 2008';
+    else
+                        VersionString := Format('%d.%d', [versionInfo.dwMajorVersion,
+                                                          versionInfo.dwMinorVersion]);
     end;
 
-    if StrLen(pVersion.szCSDVersion) > 0 then
-      VersionString := VersionString + ' ' + pVersion.szCSDVersion;
+    if StrLen(versionInfo.szCSDVersion) > 0 then
+      VersionString := VersionString + ' ' + versionInfo.szCSDVersion;
 
-    case pVersion.dwPlatformId of
+    case versionInfo.dwPlatformId of
       VER_PLATFORM_WIN32_NT:
-        Build := pVersion.dwBuildNumber;
+        Build := versionInfo.dwBuildNumber;
       VER_PLATFORM_WIN32_WINDOWS:
-        Build := LoWord(pVersion.dwBuildNumber);
+        Build := LoWord(versionInfo.dwBuildNumber);
     end;
   end;
 end;
@@ -234,7 +306,7 @@ begin
     begin
       FillChar(viVersion, SizeOf(viVersion), #0);
       viVersion.cbSize  := SizeOf(viVersion);
-      
+
       DllGetVersion(@viVersion);
 
       with FCCVersion do
@@ -249,24 +321,31 @@ begin
   end;
 end;
 
-function TX2OS.GetXPManifest;
-begin
-  Result  := (FCCVersion.Major >= 6);
-end;
-
 
 function TX2OS.FormatVersion;
 var
   sBuild:     String;
 
 begin
-  sBuild    := '';
+  sBuild := '';
 
   if Build then
-    sBuild    := Format(' build %d', [FVersionEx.Build]);
+    sBuild := Format(' build %d', [FVersionEx.Build]);
 
   with FVersionEx do
     Result := Format('%s %s%s', [Name, VersionString, sBuild]);
+end;
+
+
+function TX2OS.GetXPManifest;
+begin
+  Result := (FCCVersion.Major >= 6);
+end;
+
+
+function TX2OS.GetSupportsUAC: Boolean;
+begin
+  Result := (FVersionEx.RawInfo.dwMajorVersion >= 6);
 end;
 
 

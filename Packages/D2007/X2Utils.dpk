@@ -52,6 +52,7 @@ contains
   X2UtPersist in '..\..\X2UtPersist.pas',
   X2UtPersistForm in '..\..\X2UtPersistForm.pas',
   X2UtPersistIntf in '..\..\X2UtPersistIntf.pas',
-  X2UtPersistRegistry in '..\..\X2UtPersistRegistry.pas';
+  X2UtPersistRegistry in '..\..\X2UtPersistRegistry.pas',
+  X2UtElevation in '..\..\X2UtElevation.pas';
 
 end.
