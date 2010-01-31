@@ -452,7 +452,7 @@ end;
 function TX2App.FormatVersion(const ABuild: Boolean = True;
                               const AProductName: Boolean = False): String;
 begin
-  Result  := FVersion.FormatVersion(ABuild, AProductName);
+  Result  := Version.FormatVersion(ABuild, AProductName);
 end;
 
 

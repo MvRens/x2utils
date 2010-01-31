@@ -72,11 +72,13 @@ type
     FFileMapData:       PX2InstanceMapData;
     FFileMapping:       THandle;
     FObservers:         TInterfaceList;
+    FLocalIfGlobalFails: Boolean;
   protected
     function GetCount(): Integer; virtual;
+    procedure SetActive(const Value: Boolean); virtual;
     procedure SetApplicationID(const Value: String); virtual;
     procedure SetGlobal(const Value: Boolean); virtual;
-    procedure SetActive(const Value: Boolean); virtual;
+    procedure SetLocalIfGlobalFails(const Value: Boolean); virtual;
 
     procedure WindowProc(var Message: TMessage); virtual;
 
@@ -104,11 +106,12 @@ type
     //:$ Unregisters a previously registered instance.
     procedure Detach(const ANotifier: IX2InstanceObserver);
 
-    property Active:          Boolean   read FActive          write SetActive;
-    property ApplicationID:   String    read FApplicationID   write SetApplicationID;
-    property FirstInstance:   Boolean   read FFirstInstance;
-    property Global:          Boolean   read FGlobal          write SetGlobal;
-    property Count:           Integer   read GetCount;
+    property Active:              Boolean   read FActive              write SetActive;
+    property ApplicationID:       String    read FApplicationID       write SetApplicationID;
+    property FirstInstance:       Boolean   read FFirstInstance;
+    property Global:              Boolean   read FGlobal              write SetGlobal;
+    property LocalIfGlobalFails:  Boolean   read FLocalIfGlobalFails  write SetLocalIfGlobalFails;
+    property Count:               Integer   read GetCount;
   end;
 
   {
@@ -217,6 +220,7 @@ begin
   inherited;
 
   FObservers  := TInterfaceList.Create;
+  FLocalIfGlobalFails := True;
 end;
 
 destructor TX2Instance.Destroy();
@@ -299,7 +303,15 @@ begin
                                      PChar(ScopePrefix[Global] +
                                            'SingleInstance.' + ApplicationID));
   if FFileMapping = 0 then
-    RaiseLastOSError();
+  begin
+    if Global and LocalIfGlobalFails then
+    begin
+      FGlobal := False;
+      Open();
+      Exit;
+    end else
+      RaiseLastOSError();
+  end;
 
   FActive := True;
   try
@@ -441,6 +453,11 @@ begin
   end;
 end;
 
+
+procedure TX2Instance.SetLocalIfGlobalFails(const Value: Boolean);
+begin
+  FLocalIfGlobalFails := Value;
+end;
 
 
 // Copied from System unit because Borland didn't make it public
