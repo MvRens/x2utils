@@ -28,8 +28,8 @@ type
     function Read(AObject: TObject): Boolean; virtual;
     procedure Write(AObject: TObject); virtual;
 
-    function CreateReader(): IX2PersistReader; virtual;
-    function CreateWriter(): IX2PersistWriter; virtual;
+    function CreateReader: IX2PersistReader; virtual;
+    function CreateWriter: IX2PersistWriter; virtual;
 
     function CreateSectionReader(const ASection: String): IX2PersistReader; virtual;
     function CreateSectionWriter(const ASection: String): IX2PersistWriter; virtual;
@@ -54,12 +54,12 @@ type
     property Sections:  TStrings          read FSections;
   public
     constructor Create(AIsReader: Boolean);
-    destructor Destroy(); override;
+    destructor Destroy; override;
 
 
     { IX2PersistFiler }
     function BeginSection(const AName: String): Boolean; virtual;
-    procedure EndSection(); virtual;
+    procedure EndSection; virtual;
     
     procedure GetKeys(const ADest: TStrings); virtual; abstract;
     procedure GetSections(const ADest: TStrings); virtual; abstract;
@@ -88,7 +88,7 @@ type
     function WriteInt64(const AName: String; AValue: Int64): Boolean; virtual; abstract;
     function WriteStream(const AName: String; AStream: TStream): Boolean; virtual;
 
-    procedure ClearCollection(); virtual;
+    procedure ClearCollection; virtual;
     procedure WriteCollection(ACollection: TCollection); virtual;
 
     procedure DeleteKey(const AName: String); virtual; abstract;
@@ -123,7 +123,7 @@ type
 
     { IX2PersistFiler }
     function BeginSection(const AName: String): Boolean;
-    procedure EndSection();
+    procedure EndSection;
 
     procedure GetKeys(const ADest: TStrings);
     procedure GetSections(const ADest: TStrings);
@@ -152,18 +152,18 @@ type
     procedure DeleteSection(const AName: String);
   public
     constructor Create(const AFiler: IX2PersistFiler; const ASection: String);
-    destructor Destroy(); override;
+    destructor Destroy; override;
   end;
 
 
 { TX2CustomPersist }
-function TX2CustomPersist.CreateReader(): IX2PersistReader;
+function TX2CustomPersist.CreateReader: IX2PersistReader;
 begin
   Result  := (CreateFiler(True) as IX2PersistReader);
 end;
 
 
-function TX2CustomPersist.CreateWriter(): IX2PersistWriter;
+function TX2CustomPersist.CreateWriter: IX2PersistWriter;
 begin
   Result  := (CreateFiler(False) as IX2PersistWriter);
 end;
@@ -171,26 +171,26 @@ end;
 
 function TX2CustomPersist.CreateSectionReader(const ASection: String): IX2PersistReader;
 begin
-  Result  := (TX2PersistSectionFilerProxy.Create(CreateReader(), ASection) as IX2PersistReader);
+  Result  := (TX2PersistSectionFilerProxy.Create(CreateReader, ASection) as IX2PersistReader);
 end;
 
 
 function TX2CustomPersist.CreateSectionWriter(const ASection: String): IX2PersistWriter;
 begin
-  Result  := (TX2PersistSectionFilerProxy.Create(CreateWriter(), ASection) as IX2PersistWriter);
+  Result  := (TX2PersistSectionFilerProxy.Create(CreateWriter, ASection) as IX2PersistWriter);
 end;
 
 
 function TX2CustomPersist.Read(AObject: TObject): Boolean;
 begin
-  with CreateReader() do
+  with CreateReader do
     Result  := Read(AObject);
 end;
 
 
 procedure TX2CustomPersist.Write(AObject: TObject);
 begin
-  with CreateWriter() do
+  with CreateWriter do
     Write(AObject);
 end;
 
@@ -198,14 +198,14 @@ end;
 { TX2CustomPersistFiler }
 constructor TX2CustomPersistFiler.Create(AIsReader: Boolean);
 begin
-  inherited Create();
+  inherited Create;
 
   FIsReader := AIsReader;
-  FSections := TStringList.Create();
+  FSections := TStringList.Create;
 end;
 
 
-destructor TX2CustomPersistFiler.Destroy();
+destructor TX2CustomPersistFiler.Destroy;
 begin
   FreeAndNil(FSections);
 
@@ -236,7 +236,7 @@ begin
 end;
 
 
-procedure TX2CustomPersistFiler.EndSection();
+procedure TX2CustomPersistFiler.EndSection;
 begin
   Assert(FSections.Count > 0, 'EndSection called without BeginSection');
   FSections.Delete(Pred(FSections.Count));
@@ -385,7 +385,7 @@ begin
             try
               AContinue := Read(objectProp);
             finally
-              EndSection();
+              EndSection;
             end;
           end;
         end;
@@ -496,7 +496,7 @@ begin
             try
               Write(objectProp);
             finally
-              EndSection();
+              EndSection;               
             end;
           end;
         end;
@@ -514,22 +514,22 @@ var
 begin
   if ReadInteger(CollectionCountName, itemCount) then
   begin
-    ACollection.BeginUpdate();
+    ACollection.BeginUpdate;
     try
-      ACollection.Clear();
+      ACollection.Clear;
 
       for itemIndex := 0 to Pred(itemCount) do
       begin
         if BeginSection(CollectionItemNamePrefix + IntToStr(itemIndex)) then
         try
-          collectionItem  := ACollection.Add();          
+          collectionItem  := ACollection.Add;          
           Read(collectionItem);
         finally
-          EndSection();
+          EndSection;
         end;
       end;
     finally
-      ACollection.EndUpdate();
+      ACollection.EndUpdate;
     end;
   end;
 end;
@@ -546,23 +546,23 @@ begin
 end;
 
 
-procedure TX2CustomPersistFiler.ClearCollection();
+procedure TX2CustomPersistFiler.ClearCollection;
 var
-  keyNames:   TStringList;
-  keyIndex:   Integer;
+  sections:   TStringList;
+  sectionIndex:   Integer;
 
 begin
   inherited;
 
-  keyNames  := TStringList.Create();
+  sections  := TStringList.Create;
   try
-    GetKeys(keyNames);
+    GetSections(sections);
 
-    for keyIndex := 0 to Pred(keyNames.Count) do
-      if SameTextS(keyNames[keyIndex], CollectionItemNamePrefix) then
-        DeleteKey(keyNames[keyIndex]);
+    for sectionIndex := 0 to Pred(sections.Count) do
+      if SameTextS(sections[sectionIndex], CollectionItemNamePrefix) then
+        DeleteSection(sections[sectionIndex]);
   finally
-    FreeAndNil(keyNames);
+    FreeAndNil(sections);
   end;
 end;
 
@@ -572,7 +572,7 @@ var
   itemIndex: Integer;
 
 begin
-  ClearCollection();
+  ClearCollection;
   WriteInteger(CollectionCountName, ACollection.Count);
 
   for itemIndex := 0 to Pred(ACollection.Count) do
@@ -581,7 +581,7 @@ begin
     try
       Write(ACollection.Items[itemIndex]);
     finally
-      EndSection();
+      EndSection;
     end;
   end;
 end;
@@ -610,7 +610,7 @@ var
   undoIndex:      Integer;
 
 begin
-  inherited Create();
+  inherited Create;
 
   FFiler    := AFiler;
 
@@ -625,7 +625,7 @@ begin
       begin
         { Undo all sections so far }
         for undoIndex := 0 to Pred(SectionCount) do
-          Filer.EndSection();
+          Filer.EndSection;
 
         FFiler  := nil;
         Break;
@@ -636,14 +636,14 @@ begin
 end;
 
 
-destructor TX2PersistSectionFilerProxy.Destroy();
+destructor TX2PersistSectionFilerProxy.Destroy;
 var
   sectionIndex:     Integer;
 
 begin
   if Assigned(Filer) then
     for sectionIndex := 0 to Pred(SectionCount) do
-      Filer.EndSection();
+      Filer.EndSection;
 
   inherited;
 end;
@@ -677,10 +677,10 @@ begin
 end;
 
 
-procedure TX2PersistSectionFilerProxy.EndSection();
+procedure TX2PersistSectionFilerProxy.EndSection;
 begin
   if Assigned(Filer) then
-    Filer.EndSection();
+    Filer.EndSection ;
 end;
 
 

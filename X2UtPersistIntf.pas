@@ -29,8 +29,8 @@ type
     function Read(AObject: TObject): Boolean;
     procedure Write(AObject: TObject);
 
-    function CreateReader(): IX2PersistReader;
-    function CreateWriter(): IX2PersistWriter;
+    function CreateReader: IX2PersistReader;
+    function CreateWriter: IX2PersistWriter;
 
     function CreateSectionReader(const ASection: String): IX2PersistReader;
     function CreateSectionWriter(const ASection: String): IX2PersistWriter;
@@ -40,7 +40,7 @@ type
   IX2PersistFiler = interface
     ['{BF63CDAA-98D4-42EE-A937-DFCD0074A0ED}']
     function BeginSection(const AName: String): Boolean;
-    procedure EndSection();
+    procedure EndSection;
 
     procedure GetKeys(const ADest: TStrings);
     procedure GetSections(const ADest: TStrings);

@@ -25,7 +25,7 @@ type
   protected
     function CreateFiler(AIsReader: Boolean): IX2PersistFiler; override;
   public
-    constructor Create();
+    constructor Create;
 
     property Key:       String  read FKey     write FKey;
     property RootKey:   HKEY    read FRootKey write FRootKey;
@@ -40,7 +40,7 @@ type
     function OpenKey(const ANewKey: String): Boolean;
   public
     function BeginSection(const AName: String): Boolean; override;
-    procedure EndSection(); override;
+    procedure EndSection; override;
 
 
     procedure GetKeys(const ADest: TStrings); override;
@@ -70,7 +70,7 @@ type
     property Registry:    TRegistry read FRegistry;
   public
     constructor Create(AIsReader: Boolean; ARootKey: HKEY; const AKey: String);
-    destructor Destroy(); override;
+    destructor Destroy; override;
   end;
 
 
@@ -93,32 +93,32 @@ const
 { Wrapper functions }
 function ReadFromRegistry(AObject: TObject; const AKey: String; ARootKey: HKEY): Boolean;
 begin
-  with TX2UtPersistRegistry.Create() do
+  with TX2UtPersistRegistry.Create do
   try
     RootKey := ARootKey;
     Key     := AKey;
     Result  := Read(AObject);
   finally
-    Free();
+    Free;
   end;
 end;
 
 
 procedure WriteToRegistry(AObject: TObject; const AKey: String; ARootKey: HKEY);
 begin
-  with TX2UtPersistRegistry.Create() do
+  with TX2UtPersistRegistry.Create do
   try
     RootKey := ARootKey;
     Key     := AKey;
     Write(AObject);
   finally
-    Free();
+    Free;
   end;
 end;
 
 
 { TX2UtPersistRegistry }
-constructor TX2UtPersistRegistry.Create();
+constructor TX2UtPersistRegistry.Create;
 begin
   inherited;
   
@@ -140,7 +140,7 @@ begin
   if AIsReader then
     FRegistry := TRegistry.Create(KEY_READ)
   else
-    FRegistry := TRegistry.Create();
+    FRegistry := TRegistry.Create;
 
   FRegistry.RootKey := ARootKey;
   FKey              := AKey;
@@ -149,7 +149,7 @@ begin
 end;
 
 
-destructor TX2UtPersistRegistryFiler.Destroy();
+destructor TX2UtPersistRegistryFiler.Destroy;
 begin
   FreeAndNil(FRegistry);
 
@@ -195,7 +195,7 @@ begin
 end;
 
 
-procedure TX2UtPersistRegistryFiler.EndSection();
+procedure TX2UtPersistRegistryFiler.EndSection;
 begin
   inherited;
 

@@ -24,9 +24,15 @@ type
     FMaximized:   Boolean;
     FTop:         Integer;
     FWidth:       Integer;
-    
-    function GetBounds(): TRect;
+    FBoundsSet:   Boolean;
+
+    function GetBounds: TRect;
     procedure SetBounds(const Value: TRect);
+    procedure SetHeight(const Value: Integer);
+    procedure SetLeft(const Value: Integer);
+    procedure SetMaximized(const Value: Boolean);
+    procedure SetTop(const Value: Integer);
+    procedure SetWidth(const Value: Integer);
   protected
     procedure AssignTo(Dest: TPersistent); override;
   public
@@ -34,11 +40,11 @@ type
 
     property Bounds:    TRect   read GetBounds  write SetBounds;
   published
-    property Maximized: Boolean read FMaximized write FMaximized;
-    property Left:      Integer read FLeft      write FLeft;
-    property Top:       Integer read FTop       write FTop;
-    property Width:     Integer read FWidth     write FWidth;
-    property Height:    Integer read FHeight    write FHeight;
+    property Maximized: Boolean read FMaximized write SetMaximized;
+    property Left:      Integer read FLeft      write SetLeft;
+    property Top:       Integer read FTop       write SetTop;
+    property Width:     Integer read FWidth     write SetWidth;
+    property Height:    Integer read FHeight    write SetHeight;
   end;
 
 
@@ -65,7 +71,7 @@ var
   formPos:    TX2FormPosSettings;
 
 begin
-  formPos := TX2FormPosSettings.Create();
+  formPos := TX2FormPosSettings.Create;
   try
     formPos.Assign(AForm);
     AReader.Read(formPos);
@@ -81,7 +87,7 @@ var
   formPos:    TX2FormPosSettings;
 
 begin
-  formPos := TX2FormPosSettings.Create();
+  formPos := TX2FormPosSettings.Create;
   try
     formPos.Assign(AForm);
     AWriter.Write(formPos);
@@ -101,7 +107,7 @@ begin
   if Source is TCustomForm then
   begin
     sourceForm  := TProtectedCustomForm(Source);
-    FMaximized  := (sourceForm.WindowState = wsMaximized);
+    Maximized   := (sourceForm.WindowState = wsMaximized);
 
     FillChar(placement, SizeOf(TWindowPlacement), #0);
     placement.length  := SizeOf(TWindowPlacement);
@@ -120,6 +126,9 @@ var
   boundsRect:   TRect;
 
 begin
+  if not FBoundsSet then
+    Exit;
+
   if Dest is TCustomForm then
   begin
     destForm    := TProtectedCustomForm(Dest);
@@ -143,7 +152,7 @@ begin
 end;
 
 
-function TX2FormPosSettings.GetBounds(): TRect;
+function TX2FormPosSettings.GetBounds: TRect;
 begin
   Result  := Rect(FLeft, FTop, FLeft + FWidth, FTop + FHeight);
 end;
@@ -151,10 +160,45 @@ end;
 
 procedure TX2FormPosSettings.SetBounds(const Value: TRect);
 begin
-  FLeft   := Value.Left;
-  FTop    := Value.Top;
-  FWidth  := RectWidth(Value);
-  FHeight := RectHeight(Value);
+  Left    := Value.Left;
+  Top     := Value.Top;
+  Width   := RectWidth(Value);
+  Height  := RectHeight(Value);
+end;
+
+
+procedure TX2FormPosSettings.SetHeight(const Value: Integer);
+begin
+  FHeight := Value;
+  FBoundsSet := True;
+end;
+
+
+procedure TX2FormPosSettings.SetLeft(const Value: Integer);
+begin
+  FLeft := Value;
+  FBoundsSet := True;
+end;
+
+
+procedure TX2FormPosSettings.SetMaximized(const Value: Boolean);
+begin
+  FMaximized := Value;
+  FBoundsSet := True;
+end;
+
+
+procedure TX2FormPosSettings.SetTop(const Value: Integer);
+begin
+  FTop := Value;
+  FBoundsSet := True;
+end;
+
+
+procedure TX2FormPosSettings.SetWidth(const Value: Integer);
+begin
+  FWidth := Value;
+  FBoundsSet := True;
 end;
 
 end.
