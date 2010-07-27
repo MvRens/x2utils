@@ -1417,6 +1417,7 @@ begin
   if Assigned(FRoot) then
   begin
     DestroyBucket(FRoot);
+    InvalidateCursor;
     FCount := 0;
     FRoot := nil;
   end;
