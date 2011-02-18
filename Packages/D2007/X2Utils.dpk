@@ -30,7 +30,30 @@ package X2Utils;
 requires
   rtl,
   vcl,
-  vclx;
+  vclx,
+  xmlrtl,
+  unaGeneralD2007,
+  IndyProtocols,
+  IndyCore,
+  IndySystem,
+  cxExportD11,
+  cxLibraryD11,
+  dxThemeD11,
+  dxGDIPlusD11,
+  dxCoreD11,
+  dbrtl,
+  vcldb,
+  vcljpg,
+  cxEditorsD11,
+  cxDataD11,
+  cxExtEditorsD11,
+  cxPageControlD11,
+  cxGridD11,
+  inet,
+  madExcept_,
+  madDisAsm_,
+  madBasic_,
+  dsnap;
 
 contains
   X2UtApp in '..\..\X2UtApp.pas',
@@ -53,6 +76,8 @@ contains
   X2UtPersistForm in '..\..\X2UtPersistForm.pas',
   X2UtPersistIntf in '..\..\X2UtPersistIntf.pas',
   X2UtPersistRegistry in '..\..\X2UtPersistRegistry.pas',
-  X2UtElevation in '..\..\X2UtElevation.pas';
+  X2UtElevation in '..\..\X2UtElevation.pas',
+  X2UtPersistXML in '..\..\X2UtPersistXML.pas',
+  X2UtPersistXMLBinding in '..\..\X2UtPersistXMLBinding.pas';
 
 end.

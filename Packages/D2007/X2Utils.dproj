@@ -1,11 +1,12 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ProjectGuid>{3cd28184-f9a5-4320-9ad8-80ef25ba762e}</ProjectGuid>
     <MainSource>X2Utils.dpk</MainSource>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
-    <DCC_DependencyCheckOutputName>..\..\..\bpl\D2006\X2Utils2007.bpl</DCC_DependencyCheckOutputName>
+    <DCC_DependencyCheckOutputName>%DELPHIBIN%\X2Utils2007.bpl</DCC_DependencyCheckOutputName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Version>7.0</Version>
@@ -33,6 +34,26 @@
 <BorlandProject><Delphi.Personality><Parameters><Parameters Name="UseLauncher">False</Parameters><Parameters Name="LoadAllSymbols">True</Parameters><Parameters Name="LoadUnspecifiedSymbols">False</Parameters></Parameters><Package_Options><Package_Options Name="PackageDescription">X2Utils</Package_Options><Package_Options Name="ImplicitBuild">True</Package_Options><Package_Options Name="DesigntimeOnly">False</Package_Options><Package_Options Name="RuntimeOnly">True</Package_Options><Package_Options Name="LibSuffix">2007</Package_Options></Package_Options><VersionInfo><VersionInfo Name="IncludeVerInfo">True</VersionInfo><VersionInfo Name="AutoIncBuild">False</VersionInfo><VersionInfo Name="MajorVer">1</VersionInfo><VersionInfo Name="MinorVer">0</VersionInfo><VersionInfo Name="Release">0</VersionInfo><VersionInfo Name="Build">0</VersionInfo><VersionInfo Name="Debug">False</VersionInfo><VersionInfo Name="PreRelease">False</VersionInfo><VersionInfo Name="Special">False</VersionInfo><VersionInfo Name="Private">False</VersionInfo><VersionInfo Name="DLL">False</VersionInfo><VersionInfo Name="Locale">1043</VersionInfo><VersionInfo Name="CodePage">1252</VersionInfo></VersionInfo><VersionInfoKeys><VersionInfoKeys Name="CompanyName"></VersionInfoKeys><VersionInfoKeys Name="FileDescription"></VersionInfoKeys><VersionInfoKeys Name="FileVersion">1.0.0.0</VersionInfoKeys><VersionInfoKeys Name="InternalName"></VersionInfoKeys><VersionInfoKeys Name="LegalCopyright"></VersionInfoKeys><VersionInfoKeys Name="LegalTrademarks"></VersionInfoKeys><VersionInfoKeys Name="OriginalFilename"></VersionInfoKeys><VersionInfoKeys Name="ProductName"></VersionInfoKeys><VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys><VersionInfoKeys Name="Comments"></VersionInfoKeys></VersionInfoKeys><Source><Source Name="MainSource">X2Utils.dpk</Source></Source><Excluded_Packages>
       
       
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
       <Excluded_Packages Name="$(BDS)\bin\dcloffice2k100.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
       <Excluded_Packages Name="$(BDS)\bin\dclofficexp100.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
     </Excluded_Packages></Delphi.Personality></BorlandProject></BorlandProject>
@@ -42,9 +63,6 @@
     <DelphiCompile Include="X2Utils.dpk">
       <MainSource>MainSource</MainSource>
     </DelphiCompile>
-    <DCCReference Include="$(SystemRoot)\system32\VirtualTreesD207.dcp" />
-    <DCCReference Include="$(SystemRoot)\system32\VirtualTreesD27.dcp" />
-    <DCCReference Include="$(SystemRoot)\system32\VirtualTreesD7.dcp" />
     <DCCReference Include="..\..\X2UtApp.pas" />
     <DCCReference Include="..\..\X2UtBits.pas" />
     <DCCReference Include="..\..\X2UtElevation.pas" />
@@ -61,13 +79,38 @@
     <DCCReference Include="..\..\X2UtPersistForm.pas" />
     <DCCReference Include="..\..\X2UtPersistIntf.pas" />
     <DCCReference Include="..\..\X2UtPersistRegistry.pas" />
+    <DCCReference Include="..\..\X2UtPersistXML.pas" />
+    <DCCReference Include="..\..\X2UtPersistXMLBinding.pas" />
     <DCCReference Include="..\..\X2UtProcess.pas" />
     <DCCReference Include="..\..\X2UtSingleInstance.pas" />
     <DCCReference Include="..\..\X2UtStreams.pas" />
     <DCCReference Include="..\..\X2UtStrings.pas" />
     <DCCReference Include="..\..\X2UtTempFile.pas" />
-    <DCCReference Include="F:\Development\X2FileShare\Source\UAC\rtl.dcp" />
-    <DCCReference Include="F:\Development\X2FileShare\Source\UAC\vcl.dcp" />
-    <DCCReference Include="F:\Development\X2FileShare\Source\UAC\vclx.dcp" />
+    <DCCReference Include="C:\Projects\backup\cxDataD11.dcp" />
+    <DCCReference Include="C:\Projects\backup\cxEditorsD11.dcp" />
+    <DCCReference Include="C:\Projects\backup\cxExportD11.dcp" />
+    <DCCReference Include="C:\Projects\backup\cxExtEditorsD11.dcp" />
+    <DCCReference Include="C:\Projects\backup\cxGridD11.dcp" />
+    <DCCReference Include="C:\Projects\backup\cxLibraryD11.dcp" />
+    <DCCReference Include="C:\Projects\backup\cxPageControlD11.dcp" />
+    <DCCReference Include="C:\Projects\backup\dbrtl.dcp" />
+    <DCCReference Include="C:\Projects\backup\dsnap.dcp" />
+    <DCCReference Include="C:\Projects\backup\dxCoreD11.dcp" />
+    <DCCReference Include="C:\Projects\backup\dxGDIPlusD11.dcp" />
+    <DCCReference Include="C:\Projects\backup\dxThemeD11.dcp" />
+    <DCCReference Include="C:\Projects\backup\IndyCore.dcp" />
+    <DCCReference Include="C:\Projects\backup\IndyProtocols.dcp" />
+    <DCCReference Include="C:\Projects\backup\IndySystem.dcp" />
+    <DCCReference Include="C:\Projects\backup\inet.dcp" />
+    <DCCReference Include="C:\Projects\backup\madBasic_.dcp" />
+    <DCCReference Include="C:\Projects\backup\madDisAsm_.dcp" />
+    <DCCReference Include="C:\Projects\backup\madExcept_.dcp" />
+    <DCCReference Include="C:\Projects\backup\rtl.dcp" />
+    <DCCReference Include="C:\Projects\backup\unaGeneralD2007.dcp" />
+    <DCCReference Include="C:\Projects\backup\vcl.dcp" />
+    <DCCReference Include="C:\Projects\backup\vcldb.dcp" />
+    <DCCReference Include="C:\Projects\backup\vcljpg.dcp" />
+    <DCCReference Include="C:\Projects\backup\vclx.dcp" />
+    <DCCReference Include="C:\Projects\backup\xmlrtl.dcp" />
   </ItemGroup>
 </Project>

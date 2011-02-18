@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<DataBindingHints xmlns="http://www.x2software.net/xsd/databinding/DataBindingHints.xsd">
+	<DocumentElements>
+		<DocumentElement Schema="PersistXML" XPath="//xs:element[@name='Configuration']" />
+	</DocumentElements>
+</DataBindingHints>
