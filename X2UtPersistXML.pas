@@ -187,6 +187,9 @@ end;
 
 
 procedure TX2UtPersistXMLFiler.EndSection;
+var
+  lastItem: Integer;
+  
 begin
   inherited;
 
