@@ -192,8 +192,10 @@ begin
 
   if SectionStack.Count > 0 then
   begin
-    FSection := (SectionStack[Pred(SectionStack.Count)] as IXMLSection);
-    SectionStack.Delete(Pred(SectionStack.Count));
+    lastItem := Pred(SectionStack.Count);
+    
+    FSection := (SectionStack[Pred(lastItem)] as IXMLSection);
+    SectionStack.Delete(lastItem);
   end;
 end;
 
