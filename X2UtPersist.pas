@@ -93,12 +93,21 @@ type
 
     procedure DeleteKey(const AName: String); virtual; abstract;
     procedure DeleteSection(const AName: String); virtual; abstract;
+
+
+    { IX2PersistReader2 }
+    function ReadVariant(const AName: string; out AValue: Variant): Boolean; virtual;
+
+
+    { IX2PersistWriter2 }
+    function WriteVariant(const AName: Variant; const AValue: Variant): Boolean; virtual;
   end;
 
 
 implementation
 uses
   SysUtils,
+  Variants,
 
   X2UtStrings;
 
@@ -108,7 +117,8 @@ type
     reference counting to go through this class. }
   TX2PersistSectionFilerProxy = class(TInterfacedObject, IInterface,
                                       IX2PersistFiler, IX2PersistReader,
-                                      IX2PersistWriter)
+                                      IX2PersistWriter, IX2PersistReader2,
+                                      IX2PersistWriter2)
   private
     FFiler:           IX2PersistFiler;
     FSectionCount:    Integer;
@@ -150,6 +160,13 @@ type
 
     procedure DeleteKey(const AName: String);
     procedure DeleteSection(const AName: String);
+
+
+    { IX2PersistReader2 }
+    function ReadVariant(const AName: string; out AValue: Variant): Boolean;
+
+    { IX2PersistWriter2 }
+    function WriteVariant(const AName: Variant; const AValue: Variant): Boolean;
   public
     constructor Create(const AFiler: IX2PersistFiler; const ASection: String);
     destructor Destroy; override;
@@ -319,6 +336,7 @@ var
   stringValue:  String;
   int64Value:   Int64;
   objectProp:   TObject;
+  variantValue: Variant;
 
 begin
   { Only read writable properties }
@@ -363,8 +381,8 @@ begin
       end;
 
     tkVariant:
-      if ReadString(APropInfo^.Name, stringValue) then
-        SetVariantProp(AObject, APropInfo, stringValue);
+      if ReadVariant(APropInfo^.Name, variantValue) then
+        SetVariantProp(AObject, APropInfo, variantValue);
 
     tkInt64:
       if ReadInt64(APropInfo^.Name, int64Value) then
@@ -471,8 +489,7 @@ begin
 
     tkVariant:
       begin
-        stringValue := GetVariantProp(AObject, APropInfo);
-        WriteString(APropInfo^.Name, stringValue);
+        WriteVariant(APropInfo^.Name, GetVariantProp(AObject, APropInfo));
       end;
 
     tkInt64:
@@ -602,6 +619,25 @@ begin
 end;
 
 
+function TX2CustomPersistFiler.ReadVariant(const AName: string; out AValue: Variant): Boolean;
+var
+  stringValue: string;
+
+begin
+  AValue := Unassigned;
+  Result := ReadString(AName, stringValue);
+
+  if Result then
+    AValue := stringValue;
+end;
+
+
+function TX2CustomPersistFiler.WriteVariant(const AName, AValue: Variant): Boolean;
+begin
+  Result := WriteString(AName, AValue);
+end;
+
+
 { TX2PersistSectionFilerProxy }
 constructor TX2PersistSectionFilerProxy.Create(const AFiler: IX2PersistFiler; const ASection: String);
 var
@@ -680,7 +716,7 @@ end;
 procedure TX2PersistSectionFilerProxy.EndSection;
 begin
   if Assigned(Filer) then
-    Filer.EndSection ;
+    Filer.EndSection;
 end;
 
 
@@ -759,6 +795,17 @@ begin
 end;
 
 
+function TX2PersistSectionFilerProxy.ReadVariant(const AName: string; out AValue: Variant): Boolean;
+var
+  reader2: IX2PersistReader2;
+
+begin
+  Result := False;
+  if Assigned(Filer) and Supports(Filer, IX2PersistReader2, reader2) then
+    Result := reader2.ReadVariant(AName, AValue);
+end;
+
+
 procedure TX2PersistSectionFilerProxy.Write(AObject: TObject);
 begin
   if Assigned(Filer) then
@@ -795,6 +842,17 @@ begin
   Result  := False;
   if Assigned(Filer) then
     Result  := (Filer as IX2PersistWriter).WriteString(AName, AValue);
+end;
+
+
+function TX2PersistSectionFilerProxy.WriteVariant(const AName, AValue: Variant): Boolean;
+var
+  writer2: IX2PersistWriter2;
+
+begin
+  Result := False;
+  if Assigned(Filer) and Supports(Filer, IX2PersistWriter2, writer2) then
+    Result := writer2.WriteVariant(AName, AValue);
 end;
 
 

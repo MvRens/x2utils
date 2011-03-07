@@ -5,16 +5,18 @@
 	<xs:complexType name="Section">
 		<xs:sequence>
 			<xs:element name="section" type="Section" minOccurs="0" maxOccurs="unbounded"/>
-			<xs:element name="value" minOccurs="0" maxOccurs="unbounded">
-				<xs:complexType>
-					<xs:complexContent>
-						<xs:extension base="xs:anyType">
-							<xs:attribute name="name" type="xs:string"/>
-						</xs:extension>
-					</xs:complexContent>
-				</xs:complexType>
-			</xs:element>
+			<xs:element name="value" type="Value" minOccurs="0" maxOccurs="unbounded"/>
 		</xs:sequence>
+		<xs:attribute name="name" type="xs:string"/>
+	</xs:complexType>
+	<xs:complexType name="Value">
+		<xs:choice>
+			<xs:element name="integer" type="xs:int"/>
+			<xs:element name="float" type="xs:float"/>
+			<xs:element name="string" type="xs:string"/>
+			<xs:element name="variant" type="xs:string" nillable="true"/>
+			<xs:element name="int64" type="xs:long"/>
+		</xs:choice>
 		<xs:attribute name="name" type="xs:string"/>
 	</xs:complexType>
 </xs:schema>

@@ -83,6 +83,18 @@ type
   end;
 
 
+  IX2PersistReader2 = interface(IX2PersistReader)
+    ['{50566396-7D47-4975-BD01-465366F9216F}']
+    function ReadVariant(const AName: String; out AValue: Variant): Boolean;
+  end;
+
+
+  IX2PersistWriter2 = interface(IX2PersistWriter)
+    ['{AAC47A18-A5F9-47D3-AF00-A06E1779268C}']
+    function WriteVariant(const AName, AValue: Variant): Boolean;
+  end;
+
+
 implementation
 
 end.

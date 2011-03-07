@@ -38,8 +38,7 @@ type
     FSection:       IXMLSection;
     FSectionStack:  TInterfaceList;
   protected
-    function ReadValue(const AName: string; out AValue: string): Boolean;
-    function WriteValue(const AName: string; const AValue: string): Boolean;
+    function GetValue(const AName: string; out AValue: IXMLvalue; AWriting: Boolean): Boolean;
   public
     function BeginSection(const AName: String): Boolean; override;
     procedure EndSection; override;
@@ -53,6 +52,7 @@ type
     function ReadFloat(const AName: String; out AValue: Extended): Boolean; override;
     function ReadString(const AName: String; out AValue: String): Boolean; override;
     function ReadInt64(const AName: String; out AValue: Int64): Boolean; override;
+    function ReadVariant(const AName: string; out AValue: Variant): Boolean; override;
 
     function ReadStream(const AName: string; AStream: TStream): Boolean; override;
 
@@ -61,9 +61,11 @@ type
     function WriteFloat(const AName: String; AValue: Extended): Boolean; override;
     function WriteString(const AName, AValue: String): Boolean; override;
     function WriteInt64(const AName: String; AValue: Int64): Boolean; override;
+    function WriteVariant(const AName: Variant; const AValue: Variant): Boolean; override;
 
     function WriteStream(const AName: string; AStream: TStream): Boolean; override;
 
+    
     procedure DeleteKey(const AName: string); override;
     procedure DeleteSection(const AName: string); override;
 
@@ -86,13 +88,10 @@ type
 implementation
 uses
   SysUtils,
+  Variants,
 
   X2UtStrings;
   
-
-const
-  RegistrySeparator = '\';
-
 
 { Wrapper functions }
 function ReadFromXML(AObject: TObject; const AFileName: string): Boolean;
@@ -197,11 +196,11 @@ begin
   begin
     lastItem := Pred(SectionStack.Count);
 
-    if lastItem < 0 then
-      FSection := Configuration
+    if lastItem > 0 then
+      FSection := (SectionStack[Pred(lastItem)] as IXMLSection)
     else
-      FSection := (SectionStack[Pred(lastItem)] as IXMLSection);
-      
+      FSection := Configuration;
+
     SectionStack.Delete(lastItem);
   end;
 end;
@@ -227,40 +226,71 @@ begin
 end;
 
 
-function TX2UtPersistXMLFiler.ReadValue(const AName: string; out AValue: string): Boolean;
+function TX2UtPersistXMLFiler.GetValue(const AName: string; out AValue: IXMLvalue; AWriting: Boolean): Boolean;
 var
   valueIndex: Integer;
 
 begin
+  AValue := nil;
   Result := False;
-  AValue := '';
 
   for valueIndex := 0 to Pred(Section.value.Count) do
     if SameText(Section.value[valueIndex].name, AName) then
     begin
-      AValue := Section.value[valueIndex].Text;
+      AValue := Section.value[valueIndex];
       Result := True;
+      Break;
     end;
+
+  if AWriting then
+  begin
+    if not Result then
+    begin
+      AValue := Section.value.Add;
+      AValue.name := AName;
+    end;
+
+    AValue.ChildNodes.Clear;
+    Result := True;
+  end;
 end;
 
 
 function TX2UtPersistXMLFiler.ReadInteger(const AName: String; out AValue: Integer): Boolean;
 var
-  value: string;
+  value: IXMLvalue;
 
 begin
-  AValue  := 0;
-  Result  := ReadValue(AName, value) and TryStrToInt(value, AValue);
+  Result := GetValue(AName, value, False) and (value.Hasinteger);
+  if Result then
+    AValue := value.integer;
 end;
 
 
 function TX2UtPersistXMLFiler.ReadFloat(const AName: String; out AValue: Extended): Boolean;
 var
-  value: string;
+  value: IXMLvalue;
 
 begin
-  AValue  := 0;
-  Result  := ReadValue(AName, value) and TryStrToFloat(value, AValue);
+  Result := GetValue(AName, value, False) and (value.Hasfloat);
+  if Result then
+    AValue := value.float;
+end;
+
+
+function TX2UtPersistXMLFiler.ReadVariant(const AName: string; out AValue: Variant): Boolean;
+var
+  value: IXMLvalue;
+
+begin
+  Result := GetValue(AName, value, False) and (value.Hasvariant);
+  if Result then
+  begin
+    if value.variantIsNil then
+      AValue := Null
+    else
+      AValue := value.variant;
+  end;
 end;
 
 
@@ -272,80 +302,89 @@ end;
 
 function TX2UtPersistXMLFiler.ReadString(const AName: String; out AValue: String): Boolean;
 var
-  value: string;
+  value: IXMLvalue;
 
 begin
-  Result  := ReadValue(AName, value);
+  Result := GetValue(AName, value, False) and (value.Has_string);
+  if Result then
+    AValue := value._string;
 end;
 
 
 function TX2UtPersistXMLFiler.ReadInt64(const AName: String; out AValue: Int64): Boolean;
 var
-  value: string;
-
-begin
-  AValue  := 0;
-  Result  := ReadValue(AName, value) and TryStrToInt64(value, AValue);
-end;
-
-
-function TX2UtPersistXMLFiler.WriteValue(const AName, AValue: string): Boolean;
-var
   value: IXMLvalue;
-  valueIndex: Integer;
 
 begin
-  Result := False;
-  value := nil;
-
-  for valueIndex := 0 to Pred(Section.value.Count) do
-    if SameText(Section.value[valueIndex].name, AName) then
-    begin
-      value := Section.value[valueIndex];
-      Break;
-    end;
-
-  if not Assigned(value) then
-  begin
-    value := Section.value.Add;
-    value.name := AName;
-  end;
-
-  if Assigned(value) then
-  begin
-    value.Text := AValue;
-    Result := True;
-  end;
+  Result := GetValue(AName, value, False) and (value.Hasint64);
+  if Result then
+    AValue := value.int64;
 end;
 
 
 function TX2UtPersistXMLFiler.WriteInteger(const AName: String; AValue: Integer): Boolean;
+var
+  value: IXMLvalue;
+
 begin
-  Result  := WriteValue(AName, IntToStr(AValue));
+  Result := GetValue(AName, value, True);
+  if Result then
+    value.integer := AValue;
 end;
 
 
 function TX2UtPersistXMLFiler.WriteFloat(const AName: String; AValue: Extended): Boolean;
+var
+  value: IXMLvalue;
+
 begin
-  Result  := WriteValue(AName, FloatToStr(AValue));
+  Result := GetValue(AName, value, True);
+  if Result then
+    value.float := AValue;
+end;
+
+
+function TX2UtPersistXMLFiler.WriteString(const AName, AValue: String): Boolean;
+var
+  value: IXMLvalue;
+
+begin
+  Result := GetValue(AName, value, True);
+  if Result then
+    value._string := AValue;
+end;
+
+
+function TX2UtPersistXMLFiler.WriteInt64(const AName: String; AValue: Int64): Boolean;
+var
+  value: IXMLvalue;
+
+begin
+  Result := GetValue(AName, value, True);
+  if Result then
+    value.int64 := AValue;
+end;
+
+
+function TX2UtPersistXMLFiler.WriteVariant(const AName, AValue: Variant): Boolean;
+var
+  value: IXMLvalue;
+
+begin
+  Result := GetValue(AName, value, True);
+  if Result then
+  begin
+    if VarIsNull(AValue) or VarIsClear(AValue) then
+      value.variantIsNil := True
+    else
+      value.variant := AValue;
+  end;
 end;
 
 
 function TX2UtPersistXMLFiler.WriteStream(const AName: string; AStream: TStream): Boolean;
 begin
   raise EAbstractError.Create('Stream not yet supported in XML');
-end;
-
-
-function TX2UtPersistXMLFiler.WriteString(const AName, AValue: String): Boolean;
-begin
-  Result := WriteValue(AName, AValue);
-end;
-
-
-function TX2UtPersistXMLFiler.WriteInt64(const AName: String; AValue: Int64): Boolean;
-begin
-  Result := WriteValue(AName, IntToStr(AValue));
 end;
 
 
