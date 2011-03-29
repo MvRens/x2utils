@@ -283,13 +283,26 @@ var
   value: IXMLvalue;
 
 begin
-  Result := GetValue(AName, value, False) and (value.Hasvariant);
+  Result := GetValue(AName, value, False);
   if Result then
   begin
-    if value.variantIsNil then
-      AValue := Null
-    else
-      AValue := value.variant;
+    if value.Hasinteger then
+      AValue := value.integer
+
+    else if value.Hasfloat then
+      AValue := value.float
+
+    else if value.Has_string then
+      AValue := value._string
+
+    else if value.Hasint64 then
+      AValue := value.int64
+
+    else if value.Hasvariant then
+      if value.variantIsNil then
+        AValue := Null
+      else
+        AValue := value.variant;
   end;
 end;
 
@@ -377,7 +390,28 @@ begin
     if VarIsNull(AValue) or VarIsClear(AValue) then
       value.variantIsNil := True
     else
-      value.variant := AValue;
+    begin
+      case VarType(AValue) of
+        varSmallint,
+        varInteger:
+          value.Integer := AValue;
+
+        varSingle,
+        varDouble,
+        varCurrency:
+          value.float := AValue;
+
+        varInt64:
+          value.Int64 := AValue;
+
+        varOleStr,
+        varStrArg,
+        varString:
+          value._string := AValue;
+      else
+        value.variant := AValue;
+      end;
+    end;
   end;
 end;
 
