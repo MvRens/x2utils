@@ -398,7 +398,8 @@ begin
 
         varSingle,
         varDouble,
-        varCurrency:
+        varCurrency,
+        varDate:
           value.float := AValue;
 
         varInt64:
