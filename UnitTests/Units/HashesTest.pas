@@ -39,6 +39,7 @@ type
     procedure testGet; override;
     procedure testDelete; override;
     procedure testIterate; override;
+    procedure testIterateEmpty;
     procedure testEnumerator; override;
   end;
 
@@ -200,6 +201,13 @@ begin
   CheckTrue(aPresent[1], 'Key1 was not in the iteration!');
   CheckTrue(aPresent[2], 'Key2 was not in the iteration!');
   CheckTrue(aPresent[3], 'Key3 was not in the iteration!');
+end;
+
+
+procedure THashesSITest.testIterateEmpty;
+begin
+  Hash.First;
+  CheckFalse(Hash.Next, 'Next');
 end;
 
 

@@ -102,10 +102,10 @@ const
 var
   buffer: PChar;
   processInfo: TProcessInformation;
-  readPipe: Cardinal;
+  readPipe: THandle;
   securityAttr: TSecurityAttributes;
   startupInfo: TStartupInfo;
-  writePipe: Cardinal;
+  writePipe: THandle;
   bytesRead: Cardinal;
   newConsole: Boolean;
   consoleOutput: THandle;

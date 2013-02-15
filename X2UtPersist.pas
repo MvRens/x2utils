@@ -365,7 +365,8 @@ begin
 
     tkString,
     tkLString,
-    tkWString:
+    tkWString,
+    tkUString:
       if ReadString(APropInfo^.Name, stringValue) then
         SetStrProp(AObject, APropInfo, stringValue);
 

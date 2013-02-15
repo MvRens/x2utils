@@ -259,9 +259,9 @@ begin
     RaiseLastOSError;
 
   try
-    if RegOpenKeyExA(HKEY_CLASSES_ROOT, PChar(AKey), 0, KEY_READ or KEY_WRITE, keyHandle) = ERROR_SUCCESS then
+    if RegOpenKeyEx(HKEY_CLASSES_ROOT, PChar(AKey), 0, KEY_READ or KEY_WRITE, keyHandle) = ERROR_SUCCESS then
     try
-      if RegSetValueExA(keyHandle, PChar('AccessPermission'), 0, REG_BINARY, descriptor, size) <> ERROR_SUCCESS then
+      if RegSetValueEx(keyHandle, PChar('AccessPermission'), 0, REG_BINARY, descriptor, size) <> ERROR_SUCCESS then
         RaiseLastOSError;
     finally
       RegCloseKey(keyHandle);
@@ -336,7 +336,11 @@ begin
     end;
   except
     on E: Exception do
+      {$IFDEF VER230}
+      raise EOleRegistrationError.Create(E.Message, 0, 0);
+      {$ELSE}
       raise EOleRegistrationError.Create(E.Message);
+      {$ENDIF}
   end;
 end;
 

@@ -3,6 +3,9 @@ program X2UtHashesTest;
 {$APPTYPE CONSOLE}
 
 uses
+  madListHardware,
+  madListProcesses,
+  madListModules,
   madExcept,
   madLinkDisAsm,
   SysUtils,

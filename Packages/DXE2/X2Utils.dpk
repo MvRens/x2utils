@@ -1,0 +1,63 @@
+package X2Utils;
+
+{$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO ON}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST ON}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'X2Utils'}
+{$LIBSUFFIX 'XE2'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  vcl,
+  xmlrtl;
+
+contains
+  X2UtApp in '..\..\X2UtApp.pas',
+  X2UtBits in '..\..\X2UtBits.pas',
+  X2UtGraphics in '..\..\X2UtGraphics.pas',
+  X2UtHandCursor in '..\..\X2UtHandCursor.pas',
+  X2UtHashes in '..\..\X2UtHashes.pas',
+  X2UtHashesVariants in '..\..\X2UtHashesVariants.pas',
+  X2UtMisc in '..\..\X2UtMisc.pas',
+  X2UtOS in '..\..\X2UtOS.pas',
+  X2UtStrings in '..\..\X2UtStrings.pas',
+  X2UtImageInfo in '..\..\X2UtImageInfo.pas',
+  X2UtTempFile in '..\..\X2UtTempFile.pas',
+  X2UtIniParser in '..\..\X2UtIniParser.pas',
+  X2UtProcess in '..\..\X2UtProcess.pas',
+  X2UtSingleInstance in '..\..\X2UtSingleInstance.pas',
+  X2UtStreams in '..\..\X2UtStreams.pas',
+  X2UtNamedFormat in '..\..\X2UtNamedFormat.pas',
+  X2UtPersist in '..\..\X2UtPersist.pas',
+  X2UtPersistForm in '..\..\X2UtPersistForm.pas',
+  X2UtPersistIntf in '..\..\X2UtPersistIntf.pas',
+  X2UtPersistRegistry in '..\..\X2UtPersistRegistry.pas',
+  X2UtElevation in '..\..\X2UtElevation.pas',
+  X2UtPersistXML in '..\..\X2UtPersistXML.pas',
+  X2UtPersistXMLBinding in '..\..\X2UtPersistXMLBinding.pas',
+  XMLDataBindingUtils in '..\..\XMLDataBinding\XMLDataBindingUtils.pas';
+
+end.
