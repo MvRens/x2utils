@@ -122,6 +122,11 @@
 // so I don't know what defines they have... if you do know,
 // feel free to send me any changes...
 {$IFDEF DUNKNOWN}
+  {$DEFINE DXE2PLUS}
+  {$DEFINE DXEPLUS}
+  {$DEFINE D2010PLUS}
+  {$DEFINE D2009PLUS}
+  {$DEFINE D2007PLUS}
   {$DEFINE D2006PLUS}
   {$DEFINE D2005PLUS}
   {$DEFINE D8PLUS}
@@ -133,3 +138,4 @@
   {$DEFINE D2PLUS}
   {$DEFINE D1PLUS}
 {$ENDIF}
+

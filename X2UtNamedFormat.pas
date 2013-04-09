@@ -176,9 +176,9 @@ begin
       param := AParams[paramIndex];
 
       case param.VType of
-        vtChar:       name  := param.VChar;
-        vtString:     name  := param.VString^;
-        vtPChar:      name  := param.VPChar;
+        vtChar:       name  := string(param.VChar);
+        vtString:     name  := string(param.VString^);
+        vtPChar:      name  := string(param.VPChar);
         vtAnsiString: name  := PChar(param.VAnsiString);
       else
         raise Exception.CreateFmt('Parameter name at index %d is not a string value',

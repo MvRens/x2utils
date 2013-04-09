@@ -58,6 +58,6 @@ contains
   X2UtElevation in '..\..\X2UtElevation.pas',
   X2UtPersistXML in '..\..\X2UtPersistXML.pas',
   X2UtPersistXMLBinding in '..\..\X2UtPersistXMLBinding.pas',
-  XMLDataBindingUtils in '..\..\XMLDataBinding\XMLDataBindingUtils.pas';
+  XMLDataBindingUtils in '..\..\XMLDataBindingUtils.pas';
 
 end.

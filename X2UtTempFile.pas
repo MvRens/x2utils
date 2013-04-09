@@ -25,6 +25,8 @@ uses
   Windows;
 
 
+{$I X2UtCompilerVersion.inc}
+
 
 function GetAppDataPath(): String;
 var
@@ -122,7 +124,11 @@ end;
 
 function IsValidFileChar(const AChar: Char): Boolean;
 begin
+  {$IFDEF DXE2PLUS}
+  Result  := not CharInSet(AChar, ['\', '/', ':', '*', '?', '"', '<', '>', '|']);
+  {$ELSE}
   Result  := not (AChar in ['\', '/', ':', '*', '?', '"', '<', '>', '|']);
+  {$ENDIF}
 end;
 
 

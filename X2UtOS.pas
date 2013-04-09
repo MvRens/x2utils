@@ -278,7 +278,7 @@ begin
     end;
 
     if StrLen(versionInfo.szCSDVersion) > 0 then
-      VersionString := VersionString + ' ' + versionInfo.szCSDVersion;
+      VersionString := VersionString + ' ' + string(versionInfo.szCSDVersion);
 
     case versionInfo.dwPlatformId of
       VER_PLATFORM_WIN32_NT:

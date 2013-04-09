@@ -112,6 +112,9 @@ uses
   X2UtStrings;
 
 
+{$I X2UtCompilerVersion.inc}
+
+
 type
   { This class has to proxy all the interfaces in order for
     reference counting to go through this class. }
@@ -348,15 +351,15 @@ begin
     tkInteger,
     tkChar,
     tkWChar:
-      if ReadInteger(APropInfo^.Name, ordValue) then
+      if ReadInteger(string(APropInfo^.Name), ordValue) then
         SetOrdProp(AObject, APropInfo, ordValue);
 
     tkFloat:
-      if ReadFloat(APropInfo^.Name, floatValue) then
+      if ReadFloat(string(APropInfo^.Name), floatValue) then
         SetFloatProp(AObject, APropInfo, floatValue);
 
     tkEnumeration:
-      if ReadString(APropInfo^.Name, stringValue) then
+      if ReadString(string(APropInfo^.Name), stringValue) then
       begin
         ordValue := GetEnumValue(APropInfo^.PropType^, stringValue);
         if ordValue >= 0 then
@@ -364,14 +367,16 @@ begin
       end;
 
     tkString,
+    {$IFDEF D2009PLUS}
+    tkUString,
+    {$ENDIF}
     tkLString,
-    tkWString,
-    tkUString:
-      if ReadString(APropInfo^.Name, stringValue) then
+    tkWString:
+      if ReadString(string(APropInfo^.Name), stringValue) then
         SetStrProp(AObject, APropInfo, stringValue);
 
     tkSet:
-      if ReadString(APropInfo^.Name, stringValue) then
+      if ReadString(string(APropInfo^.Name), stringValue) then
       begin
         try
           ordValue  := StringToSet(APropInfo, stringValue);
@@ -382,11 +387,11 @@ begin
       end;
 
     tkVariant:
-      if ReadVariant(APropInfo^.Name, variantValue) then
+      if ReadVariant(string(APropInfo^.Name), variantValue) then
         SetVariantProp(AObject, APropInfo, variantValue);
 
     tkInt64:
-      if ReadInt64(APropInfo^.Name, int64Value) then
+      if ReadInt64(string(APropInfo^.Name), int64Value) then
         SetInt64Prop(AObject, APropInfo, int64Value);
 
     tkClass:
@@ -396,11 +401,11 @@ begin
         begin
           if objectProp is TStream then
           begin
-            ReadStream(APropInfo^.Name, TStream(objectProp));
+            ReadStream(string(APropInfo^.Name), TStream(objectProp));
           end else
           begin
             { Recurse into object properties }
-            if BeginSection(APropInfo^.Name) then
+            if BeginSection(string(APropInfo^.Name)) then
             try
               AContinue := Read(objectProp);
             finally
@@ -457,35 +462,38 @@ begin
     tkWChar:
       begin
         ordValue  := GetOrdProp(AObject, APropInfo);
-        WriteInteger(APropInfo^.Name, ordValue);
+        WriteInteger(string(APropInfo^.Name), ordValue);
       end;
 
     tkFloat:
       begin
         floatValue  := GetFloatProp(AObject, APropInfo);
-        WriteFloat(APropInfo^.Name, floatValue);
+        WriteFloat(string(APropInfo^.Name), floatValue);
       end;
 
     tkEnumeration:
       begin
         ordValue    := GetOrdProp(AObject, APropInfo);
         stringValue := GetEnumName(APropInfo^.PropType^, ordValue);
-        WriteString(APropInfo^.Name, stringValue);
+        WriteString(string(APropInfo^.Name), stringValue);
       end;
 
     tkString,
+    {$IFDEF D2009PLUS}
+    tkUString,
+    {$ENDIF}
     tkLString,
     tkWString:
       begin
         stringValue := GetStrProp(AObject, APropInfo);
-        WriteString(APropInfo^.Name, stringValue);
+        WriteString(string(APropInfo^.Name), stringValue);
       end;
 
     tkSet:
       begin
         ordValue    := GetOrdProp(AObject, APropInfo);
         stringValue := SetToString(APropInfo, ordValue, True);
-        WriteString(APropInfo^.Name, stringValue);
+        WriteString(string(APropInfo^.Name), stringValue);
       end;
 
     tkVariant:
@@ -496,7 +504,7 @@ begin
     tkInt64:
       begin
         int64Value  := GetInt64Prop(AObject, APropInfo);
-        WriteInt64(APropInfo^.Name, int64Value);
+        WriteInt64(string(APropInfo^.Name), int64Value);
       end;
 
     tkClass:
@@ -506,11 +514,11 @@ begin
         begin
           if objectProp is TStream then
           begin
-            WriteStream(APropInfo^.Name, TStream(objectProp));
+            WriteStream(string(APropInfo^.Name), TStream(objectProp));
           end else
           begin
             { Recurse into object properties }
-            if BeginSection(APropInfo^.Name) then
+            if BeginSection(string(APropInfo^.Name)) then
             try
               Write(objectProp);
             finally
