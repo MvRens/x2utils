@@ -10,7 +10,8 @@ unit X2UtNamedFormat;
 
 interface
 uses
-  Classes;
+  Classes, 
+  SysUtils;
 
 
 type
@@ -28,7 +29,7 @@ type
     <>, eg:
 
       %<Value1>:s %<Value2>:.2d
-      
+
 
     AParams contains alternating the parameter name and it's value.
 
@@ -37,12 +38,16 @@ type
     be affected by named specifiers! It is strongly recommended to name all
     specifiers.
   }
-  function NamedFormat(const AFormat: String; AParams: array of const): String;
+  function NamedFormat(const AFormat: String; AParams: array of const; AFormatSettings: TFormatSettings): String; overload;
+  function NamedFormat(const AFormat: String; AParams: array of const): String; overload;
 
-  
+
 implementation
 uses
-  SysUtils;
+  Windows;
+
+
+{$I X2UtCompilerVersion.inc}
 
 
 type
@@ -92,7 +97,21 @@ begin
 end;
 
 
-function NamedFormat(const AFormat: String; AParams: array of const): String;
+function NamedFormat(const AFormat: String; AParams: array of const): String; overload;
+var
+  formatSettings: TFormatSettings;
+
+begin
+  {$IFDEF DXE2PLUS}
+  formatSettings := TFormatSettings.Create;
+  {$ELSE}
+  GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT, formatSettings);
+  {$ENDIF}
+  Result := NamedFormat(AFormat, AParams, formatSettings);
+end;
+
+
+function NamedFormat(const AFormat: String; AParams: array of const; AFormatSettings: TFormatSettings): String;
 var
   currentPos:     PChar;
   formatEnd:      PChar;
@@ -195,7 +214,8 @@ begin
     end;
 
     try
-      Result  := Format(formatString, paramValues);
+
+      Result := Format(formatString, paramValues, AFormatSettings);
     except
       on E:EConvertError do
       begin
