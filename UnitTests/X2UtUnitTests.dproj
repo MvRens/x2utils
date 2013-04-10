@@ -54,6 +54,7 @@
     <DCCReference Include="..\X2UtSingleInstance.pas" />
     <DCCReference Include="Units\BitsTest.pas" />
     <DCCReference Include="Units\HashesTest.pas" />
+    <DCCReference Include="Units\NamedFormatTest.pas" />
     <DCCReference Include="Units\PersistTest.pas" />
   </ItemGroup>
 </Project>

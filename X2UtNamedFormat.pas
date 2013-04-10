@@ -175,7 +175,8 @@ begin
 
               currentPos  := nameEnd;
             end;
-          end;
+          end else
+            StreamWriteChar(formatStream, currentPos^);
         end else
           StreamWriteChar(formatStream, currentPos^);
 
