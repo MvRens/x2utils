@@ -6,7 +6,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
-    <DCC_DependencyCheckOutputName>P:\algemeen\bin\D2007\X2Utils2007.bpl</DCC_DependencyCheckOutputName>
+    <DCC_DependencyCheckOutputName>..\..\..\Bpl\D2006\X2Utils2007.bpl</DCC_DependencyCheckOutputName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Version>7.0</Version>
@@ -38,6 +38,8 @@
       
       
       
+      
+      
       <Excluded_Packages Name="$(BDS)\bin\dcloffice2k100.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
       <Excluded_Packages Name="$(BDS)\bin\dclofficexp100.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
     </Excluded_Packages></Delphi.Personality></BorlandProject></BorlandProject>
@@ -49,6 +51,7 @@
     </DelphiCompile>
     <DCCReference Include="..\..\X2UtApp.pas" />
     <DCCReference Include="..\..\X2UtBits.pas" />
+    <DCCReference Include="..\..\X2UtCursors.pas" />
     <DCCReference Include="..\..\X2UtElevation.pas" />
     <DCCReference Include="..\..\X2UtGraphics.pas" />
     <DCCReference Include="..\..\X2UtHandCursor.pas" />
@@ -71,8 +74,8 @@
     <DCCReference Include="..\..\X2UtStrings.pas" />
     <DCCReference Include="..\..\X2UtTempFile.pas" />
     <DCCReference Include="..\..\XMLDataBinding\XMLDataBindingUtils.pas" />
-    <DCCReference Include="P:\algemeen\rtl.dcp" />
-    <DCCReference Include="P:\algemeen\vcl.dcp" />
-    <DCCReference Include="P:\algemeen\xmlrtl.dcp" />
+    <DCCReference Include="C:\Users\PsychoMark\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\Development\rtl.dcp" />
+    <DCCReference Include="C:\Users\PsychoMark\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\Development\vcl.dcp" />
+    <DCCReference Include="C:\Users\PsychoMark\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\Development\xmlrtl.dcp" />
   </ItemGroup>
 </Project>

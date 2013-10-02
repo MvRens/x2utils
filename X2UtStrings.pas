@@ -82,11 +82,12 @@ type
 
   {** Appends string parts with a specified glue value.
    *
-   * @param ASource     the source parts
-   * @param AGlue       the string added between the parts
-   * @result            the composed parts
+   * @param ASource         the source parts
+   * @param AGlue           the string added between the parts
+   * @param ASkipEmptyItems if True, include only items of Length > 0
+   * @result                the composed parts
   *}
-  function Join(const ASource: TStringDynArray; const AGlue: String): String;
+  function Join(ASource: array of string; const AGlue: String; ASkipEmptyItems: Boolean = False): String; 
 
   {** Determines if one path is the child of another path.
    *
@@ -321,14 +322,16 @@ begin
   until False;
 end;
 
-function Join(const ASource: TStringDynArray; const AGlue: String): String;
+
+function Join(ASource: array of string; const AGlue: string; ASkipEmptyItems: Boolean): string;
 var
-  iGlue:          Integer;
-  iHigh:          Integer;
-  iItem:          Integer;
-  iLength:        Integer;
-  pGlue:          PChar;
-  pPos:           PChar;
+  totalLength: Integer;
+  itemIndex: Integer;
+  itemLength: Integer;
+  itemCount: Integer;
+  glueLength: Integer;
+  resultPos: PChar;
+  firstItem: Boolean;
 
 begin
   if High(ASource) = -1 then
@@ -337,36 +340,47 @@ begin
     exit;
   end;
 
-  iGlue   := Length(AGlue);
-  pGlue   := PChar(AGlue);
-  iLength := -iGlue;
+  { Om geheugen-reallocaties te verminderen, vantevoren even
+    uitrekenen hoe groot het resultaat gaat worden. }
+  itemCount := 0;
+  totalLength := 0;
 
-  // First run: calculate the size we need to reserve (two loops should
-  // generally be more efficient than a lot of memory resizing)
-  iHigh := High(ASource);
-  for iItem := iHigh downto 0 do
-    Inc(iLength, Length(ASource[iItem]) + iGlue);
-
-  SetLength(Result, iLength);
-  pPos    := PChar(Result);
-  Inc(pPos, Length(Result));
-
-  // Copy last item
-  iLength := Length(ASource[iHigh]);
-  Dec(pPos, iLength);
-  Move(PChar(ASource[iHigh])^, pPos^, iLength);
-
-  // Copy remaining items and glue strings
-  for iItem := iHigh - 1 downto 0 do
+  for itemIndex := High(ASource) downto Low(ASource) do
   begin
-    Dec(pPos, iGlue);
-    Move(pGlue^, pPos^, iGlue);
+    if (not ASkipEmptyItems) or (Length(ASource[itemIndex]) > 0) then
+    begin
+      Inc(totalLength, Length(ASource[itemIndex]));
+      Inc(itemCount);
+    end;
+  end;
 
-    iLength := Length(ASource[iItem]);
-    Dec(pPos, iLength);
-    Move(PChar(ASource[iItem])^, pPos^, iLength);
+  glueLength := Length(AGlue);
+  Inc(totalLength, Pred(itemCount) * glueLength);
+  
+  SetLength(Result, totalLength);
+
+  firstItem := True;
+  resultPos := PChar(Result);
+
+  for itemIndex := Low(ASource) to High(ASource) do
+  begin
+    itemLength := Length(ASource[itemIndex]);
+
+    if (not ASkipEmptyItems) or (itemLength > 0) then
+    begin
+      if not firstItem then
+      begin
+        Move(PChar(AGlue)^, resultPos^, glueLength);
+        Inc(resultPos, glueLength);
+      end else
+        firstItem := False;
+
+      Move(PChar(ASource[itemIndex])^, resultPos^, itemLength);
+      Inc(resultPos, itemLength);
+    end;
   end;
 end;
+
 
 
 function ChildPath(const AChild, AParent: String;
