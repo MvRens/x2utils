@@ -198,7 +198,9 @@ type
 
 implementation
 uses
-  Windows;
+  Windows,
+
+  X2UtDelphiCompatibility;
 
 
 const
@@ -628,7 +630,7 @@ begin
   for iParam  := 1 to ParamCountEx(ACmdLine) do begin
     sParam  := ParamStrEx(ACmdLine, iParam);
 
-    if (AChars = []) or (sParam[1] in AChars) then
+    if (AChars = []) or CharInSet(sParam[1], AChars) then
       if AIgnoreCase then begin
         if (AnsiCompareText(Copy(sParam, 2, Maxint), ASwitch) = 0) then begin
           Result  := True;

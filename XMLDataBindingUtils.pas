@@ -91,7 +91,9 @@ uses
   DateUtils,
   Math,
   Types,
-  Windows;
+  Windows,
+
+  X2UtDelphiCompatibility;
 
 
 type
@@ -110,7 +112,7 @@ var
   timeOffset: Integer;
 
 begin
-  GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT, formatSettings);
+  formatSettings := GetDefaultFormatSettings;
   Result  := FormatDateTime(XMLDateTimeFormats[AFormat], ADate, formatSettings);
 
   if AFormat in [xdtDateTime, xdtTime] then
@@ -237,7 +239,7 @@ begin
         begin
           { Zulu time }
           hasTimezone := True;
-        end else if time[1] in [XMLTimezoneSigns[False], XMLTimezoneSigns[True]] then
+        end else if CharInSet(time[1], [XMLTimezoneSigns[False], XMLTimezoneSigns[True]]) then
         begin
           { Parse timezone ([+|-]xx:xx) }
           if TryStrToInt(Copy(time, 2, 2), hour) and

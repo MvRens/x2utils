@@ -89,7 +89,7 @@ begin
       break;
     end;
 
-    if not (position^ in ValidNameChars) then
+    if not CharInSet(position^, ValidNameChars) then
       break;
 
     Inc(position);
