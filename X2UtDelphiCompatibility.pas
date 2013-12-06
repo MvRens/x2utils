@@ -10,6 +10,10 @@ uses
 
 
 implementation
+{$IF CompilerVersion < 20}
+uses
+  Windows;
+{$ENDIF}
 
 
 function CharInSet(C: Char; const CharSet: TSysCharSet): Boolean;
