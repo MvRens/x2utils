@@ -44,7 +44,9 @@ type
 
 implementation
 uses
-  Windows;
+  Windows,
+
+  X2UtDelphiCompatibility;
 
 
 {$I X2UtCompilerVersion.inc}

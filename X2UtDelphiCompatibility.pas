@@ -13,7 +13,7 @@ implementation
 {$IF CompilerVersion < 20}
 uses
   Windows;
-{$ENDIF}
+{$IFEND}
 
 
 function CharInSet(C: Char; const CharSet: TSysCharSet): Boolean;
