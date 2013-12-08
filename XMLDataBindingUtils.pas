@@ -399,13 +399,13 @@ end;
 
 function Base64Encode(AValue: String): String;
 begin
-  Result := MimeEncodeString(AValue);
+  Result := string(MimeEncodeString(AnsiString(AValue)));
 end;
 
 
 function Base64Decode(AValue: String): String;
 begin
-  Result := MimeDecodeString(AValue);
+  Result := string(MimeDecodeString(AnsiString(AValue)));
 end;
 
 
@@ -675,7 +675,7 @@ begin
   if L > 0 then
   begin
     SetLength(Result, MimeEncodedSize(L));
-    MimeEncode(PChar(S)^, L, PChar(Result)^);
+    MimeEncode(PAnsiChar(S)^, L, PAnsiChar(Result)^);
   end
   else
     Result := '';
@@ -694,8 +694,8 @@ begin
     SetLength(Result, MimeDecodedSize(L));
     ByteBuffer := 0;
     ByteBufferSpace := 4;
-    L := MimeDecodePartial(PChar(S)^, L, PChar(Result)^, ByteBuffer, ByteBufferSpace);
-    Inc(L, MimeDecodePartialEnd(PChar(Cardinal(Result) + L)^, ByteBuffer, ByteBufferSpace));
+    L := MimeDecodePartial(PAnsiChar(S)^, L, PAnsiChar(Result)^, ByteBuffer, ByteBufferSpace);
+    Inc(L, MimeDecodePartialEnd(PAnsiChar(Cardinal(Result) + L)^, ByteBuffer, ByteBufferSpace));
     SetLength(Result, L);
   end;
 end;
@@ -830,7 +830,7 @@ begin
   ByteBuffer := 0;
   ByteBufferSpace := 4;
   Result := MimeDecodePartial(InputBuffer, InputBytesCount, OutputBuffer, ByteBuffer, ByteBufferSpace);
-  Inc(Result, MimeDecodePartialEnd(PChar(Cardinal(OutputBuffer) + Result)^, ByteBuffer, ByteBufferSpace));
+  Inc(Result, MimeDecodePartialEnd(PAnsiChar(Cardinal(OutputBuffer) + Result)^, ByteBuffer, ByteBufferSpace));
 end;
 
 //------------------------------------------------------------------------------
