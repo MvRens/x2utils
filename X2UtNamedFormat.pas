@@ -71,7 +71,7 @@ end;
 
 procedure StreamWriteString(const AStream: TStream; const AValue: String);
 begin
-  AStream.WriteBuffer(PChar(AValue)^, Length(AValue));
+  AStream.WriteBuffer(PChar(AValue)^, Length(AValue) * SizeOf(Char));
 end;
 
 
@@ -113,7 +113,7 @@ begin
 end;
 
 
-function NamedFormat(const AFormat: String; AParams: array of const; AFormatSettings: TFormatSettings): String;
+function NamedFormat(const AFormat: string; AParams: array of const; AFormatSettings: TFormatSettings): String;
 var
   currentPos:     PChar;
   formatEnd:      PChar;
@@ -147,7 +147,7 @@ begin
     try
       { Most likely scenario; the names are longer than the replacement
         indexes. }
-      TProtectedMemoryStream(formatStream).Capacity := Length(AFormat);
+      TProtectedMemoryStream(formatStream).Capacity := Length(AFormat) * SizeOf(Char);
 
       while currentPos < formatEnd do
       begin
@@ -185,7 +185,7 @@ begin
         Inc(currentPos);
       end;
 
-      SetString(formatString, PChar(formatStream.Memory), formatStream.Size);
+      SetString(formatString, PChar(formatStream.Memory), formatStream.Size div SizeOf(Char));
     finally
       FreeAndNil(formatStream);
     end;
@@ -198,10 +198,13 @@ begin
       param := AParams[paramIndex];
 
       case param.VType of
-        vtChar:       name  := string(param.VChar);
-        vtString:     name  := string(param.VString^);
-        vtPChar:      name  := string(param.VPChar);
-        vtAnsiString: name  := PChar(param.VAnsiString);
+        vtChar:           name  := string(param.VChar);
+        vtString:         name  := string(param.VString^);
+        vtPChar:          name  := string(param.VPChar);
+        vtAnsiString:     name  := string(PChar(param.VAnsiString));
+        vtWideChar:       name  := string(param.VWideChar);
+        vtWideString:     name  := string(WideString(param.VWideString));
+        vtUnicodeString:  name  := string(UnicodeString(param.VUnicodeString));
       else
         raise Exception.CreateFmt('Parameter name at index %d is not a string value',
                                   [paramIndex div 2]);

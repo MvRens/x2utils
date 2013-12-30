@@ -790,7 +790,7 @@ begin
 end;
 
 
-function CRC32(const AKey: Pointer; const ASize: Cardinal): Cardinal;
+function CRC32(const AKey: Pointer; const ASize: Cardinal): Cardinal; overload;
 var
   iByte:      Integer;
   pByte:      ^Byte;
@@ -805,6 +805,12 @@ begin
                 (CRC32Table[(Result xor pByte^) and $FF]));
     Inc(pByte);
   end;
+end;
+
+
+function CRC32(const AKey: string): Cardinal; overload;
+begin
+  Result := CRC32(PChar(AKey), Length(AKey) * SizeOf(Char));
 end;
 
 
@@ -1079,7 +1085,7 @@ begin
   New(stringCookie);
   stringCookie^.Length := Length(AValue);
 
-  GetMem(stringCookie^.Value, Succ(Length(AValue)));
+  GetMem(stringCookie^.Value, Succ(Length(AValue)) * SizeOf(Char));
   StrPCopy(stringCookie^.Value, AValue);
 
   Result := stringCookie;
@@ -1098,7 +1104,7 @@ begin
     if stringCookie^.Length > 0 then
     begin
       SetLength(Result, stringCookie^.Length);
-      Move(stringCookie^.Value^, Result[1], stringCookie^.Length);
+      Move(stringCookie^.Value^, Result[1], stringCookie^.Length * SizeOf(Char));
     end;
   end;
 end;
@@ -1113,7 +1119,7 @@ begin
   if Assigned(ACookie) then
   begin
     stringCookie := ACookie;
-    Result := CRC32(stringCookie^.Value, stringCookie^.Length);
+    Result := CRC32(stringCookie^.Value);
   end;
 end;
 
