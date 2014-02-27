@@ -204,7 +204,9 @@ begin
         vtAnsiString:     name  := string(PChar(param.VAnsiString));
         vtWideChar:       name  := string(param.VWideChar);
         vtWideString:     name  := string(WideString(param.VWideString));
+        {$IF CompilerVersion >= 23}
         vtUnicodeString:  name  := string(UnicodeString(param.VUnicodeString));
+        {$IFEND}
       else
         raise Exception.CreateFmt('Parameter name at index %d is not a string value',
                                   [paramIndex div 2]);
