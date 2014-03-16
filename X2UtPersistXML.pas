@@ -35,6 +35,7 @@ type
   private
     FFileName:      String;
     FConfiguration: IXMLConfiguration;
+    FIsReader:      Boolean;
     FSection:       IXMLSection;
     FSectionStack:  TInterfaceList;
   protected
@@ -71,6 +72,7 @@ type
 
 
     property Configuration: IXMLConfiguration read FConfiguration;
+    property IsReader:      Boolean           read FIsReader;
     property Section:       IXMLSection       read FSection;
     property SectionStack:  TInterfaceList    read FSectionStack;
     property FileName:      String            read FFileName;
@@ -132,6 +134,7 @@ begin
 
   FSectionStack := TInterfaceList.Create;
   FFileName := AFileName;
+  FIsReader := AIsReader;
 
   if AIsReader then
     FConfiguration := LoadConfiguration(AFileName)
@@ -170,7 +173,7 @@ begin
     end;
   end;
 
-  if not Result then
+  if (not Result) and (not IsReader) then
   begin
     FSection := Section.section.Add;
     FSection.name := AName;
