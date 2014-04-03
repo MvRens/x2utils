@@ -78,7 +78,7 @@ type
    * @todo              though optimized, it now fails on #0 characters, need
    *                    to determine the end by checking the AnsiString length.
   *}
-  procedure Split(const ASource, ADelimiter: String; out ADest: TStringDynArray);
+  procedure Split(const ASource, ADelimiter: String; out ADest: TStringDynArray; ASkipEmptyItems: Boolean = False);
 
   {** Appends string parts with a specified glue value.
    *
@@ -201,7 +201,7 @@ begin
 end;
 
 
-procedure Split(const ASource, ADelimiter: String; out ADest: TStringDynArray);
+procedure Split(const ASource, ADelimiter: String; out ADest: TStringDynArray; ASkipEmptyItems: Boolean);
   // StrPos is slow. Sloooooow slow. This function may not be advanced or
   // the fastest one around, but it sure kicks StrPos' ass.
   // 11.5 vs 1.7 seconds on a 2.4 Ghz for 10.000 iterations, baby!
@@ -253,69 +253,73 @@ const
   GrowMax   = 256;
 
 var
-  iCapacity:          Integer;
-  iCount:             Integer;
-  iDelimLen:          Integer;
-  iLength:            Integer;
-  iPos:               Integer;
-  iSize:              Integer;
-  pDelimiter:         PChar;
-  pLast:              PChar;
-  pPos:               PChar;
+  capacity: Integer;
+  count: Integer;
+  delimiterLength: Integer;
+  sourceLength: Integer;
+  position: Integer;
+  size: Integer;
+  delimiter: PChar;
+  lastPos: PChar;
+  currentPos: PChar;
 
 begin
   // Reserve some space
-  iCapacity   := GrowStart;
-  iCount      := 0;
-  SetLength(ADest, iCapacity);
+  capacity := GrowStart;
+  count := 0;
+  SetLength(ADest, capacity);
 
-  iDelimLen   := Length(ADelimiter);
-  iLength     := Length(ASource);
-  iPos        := -1;
-  pDelimiter  := PChar(ADelimiter);
-  pPos        := PChar(ASource);
+  delimiterLength := Length(ADelimiter);
+  sourceLength := Length(ASource);
+  position := 0;
+  delimiter := PChar(ADelimiter);
+  currentPos := PChar(ASource);
 
   repeat
     // Find delimiter
-    pLast     := pPos;
-    pPos      := StrPosEx(pPos, pDelimiter);
+    lastPos := currentPos;
+    currentPos := StrPosEx(currentPos, delimiter);
 
-    if pPos <> nil then
+    if currentPos <> nil then
     begin
-      // Make space
-      Inc(iCount);
-      if iCount > iCapacity then
+      size := (Integer(currentPos) - Integer(lastPos)) div SizeOf(Char);
+
+      if (size > 0) or (not ASkipEmptyItems) then
       begin
-        if iCapacity < GrowMax then
-          Inc(iCapacity, iCapacity)
-        else
-          Inc(iCapacity, GrowMax);
+        // Make space
+        Inc(count);
+        if count > capacity then
+        begin
+          if capacity < GrowMax then
+            Inc(capacity, capacity)
+          else
+            Inc(capacity, GrowMax);
 
-        SetLength(ADest, iCapacity);
+          SetLength(ADest, capacity);
+        end;
+
+        // Copy substring
+        SetString(ADest[count - 1], lastPos, size);
       end;
-
-      // Copy substring
-      iSize := (Integer(pPos) - Integer(pLast)) div SizeOf(Char);
-      SetString(ADest[iCount - 1], pLast, iSize);
 
       // Move pointer
-      Inc(pPos, iDelimLen);
-      Inc(iPos, iSize + iDelimLen);
+      Inc(currentPos, delimiterLength);
+      Inc(position, size + delimiterLength);
     end else
     begin
-      if iPos < iLength then
+      if position < sourceLength then
       begin
         // Copy what's left
-        Inc(iCount);
-        if iCount > iCapacity then
-          SetLength(ADest, iCount);
+        Inc(count);
+        if count > capacity then
+          SetLength(ADest, count);
 
-        ADest[iCount - 1] := pLast;
+        ADest[count - 1] := lastPos;
       end;
 
-      if iCount <> iCapacity then
+      if count <> capacity then
         // Shrink array
-        SetLength(ADest, iCount);
+        SetLength(ADest, count);
 
       break;
     end;

@@ -9,6 +9,7 @@ type
   TStringsTest = class(TTestCase)
   published
     procedure TestSplit;
+    procedure TestSkipEmptyItems;
   end;
 
 
@@ -26,6 +27,18 @@ var
 
 begin
   Split('value1/value2', '/', items);
+  CheckEquals(2, Length(items), 'Length');
+  CheckEquals('value1', items[0], 'Items[0]');
+  CheckEquals('value2', items[1], 'Items[1]');
+end;
+
+
+procedure TStringsTest.TestSkipEmptyItems;
+var
+  items: TStringDynArray;
+
+begin
+  Split('/value1///value2//', '/', items, True);
   CheckEquals(2, Length(items), 'Length');
   CheckEquals('value1', items[0], 'Items[0]');
   CheckEquals('value2', items[1], 'Items[1]');
