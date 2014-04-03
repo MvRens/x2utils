@@ -10,7 +10,8 @@ uses
   X2UtSingleInstance in '..\X2UtSingleInstance.pas',
   X2UtHashes in '..\X2UtHashes.pas',
   X2UtHashesVariants in '..\X2UtHashesVariants.pas',
-  NamedFormatTest in 'Units\NamedFormatTest.pas';
+  NamedFormatTest in 'Units\NamedFormatTest.pas',
+  StringsTest in 'Units\StringsTest.pas';
 
 //SettingsTest in 'Units\SettingsTest.pas',
   //IniParserTest in 'Units\IniParserTest.pas';

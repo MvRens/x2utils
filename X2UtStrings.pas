@@ -295,7 +295,7 @@ begin
       end;
 
       // Copy substring
-      iSize := Integer(pPos) - Integer(pLast);
+      iSize := (Integer(pPos) - Integer(pLast)) div SizeOf(Char);
       SetString(ADest[iCount - 1], pLast, iSize);
 
       // Move pointer
