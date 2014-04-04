@@ -71,7 +71,7 @@
 			<VerInfo_Locale>1043</VerInfo_Locale>
 			<GenDll>true</GenDll>
 			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-			<DllSuffix>2007</DllSuffix>
+			<DllSuffix>DXE2</DllSuffix>
 			<DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win64)'!=''">
@@ -113,11 +113,9 @@
 			<DCC_HppOutput>$(DELPHILIB)</DCC_HppOutput>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
-			<DllSuffix>DXE2</DllSuffix>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
-			<DllSuffix>XE2</DllSuffix>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 		</PropertyGroup>
 		<ProjectExtensions>
@@ -161,11 +159,10 @@
 						<Source Name="MainSource">X2Utils.dpk</Source>
 					</Source>
 					<Excluded_Packages>
+						<Excluded_Packages Name="P:\Algemeen\bin\DXE2\WPViewPDFLIB_XE2.bpl">WPViewPDF 3</Excluded_Packages>
 						<Excluded_Packages Name="P:\algemeen\bin\DXE2\X2CLGLD.bpl">X²CL GraphicList (Designtime)</Excluded_Packages>
 						<Excluded_Packages Name="P:\algemeen\bin\DXE2\X2CLMBD.bpl">X²CL MenuBar (Designtime)</Excluded_Packages>
 						<Excluded_Packages Name="P:\Algemeen\bin\DXE2\unaDesignDXE2.bpl">UnameIT - Designtime</Excluded_Packages>
-						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k160.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDSBIN)\dclofficexp160.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
 					</Excluded_Packages>
 				</Delphi.Personality>
 				<Platforms>
