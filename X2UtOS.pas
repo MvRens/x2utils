@@ -32,7 +32,8 @@ type
   //:$ Enumeration of the recognized Operating System versions
   TX2OSVersion  = (osWin95, osWin98, osWinME, osWinNT3, osWinNT4,
                    osWin2K, osWinXP, osWin2003, osWinVista, osWinServer2008,
-                   osWin7, osUnknown);
+                   osWinServer2008R2, osWin7, osWinServer2012, osWin8,
+                   osWinServer2012R2, osWin81, osUnknown);
 
   //:$ Record to hold the Common Controls version
   TX2CCVersion  = record
@@ -127,6 +128,15 @@ const
   VER_SUITE_PERSONAL = $00000200;
   VER_SUITE_SERVERAPPLIANCE = $00000400;
   VER_SUITE_BLADE = VER_SUITE_SERVERAPPLIANCE;
+
+
+  X2OSVersionString: array[TX2OSVerion] of string =
+                     (
+                       '95', '98', 'ME', 'NT 3.51', 'NT 4',
+                       '2000', 'XP', , 'Server 2003', 'Vista', 'Server 2008',
+                       'Server 2008 R2', '7', 'Server 2012', '8',
+                       'Server 2012 R2', '8.1', 'Onbekend'
+                     );
 
   
 implementation
@@ -241,7 +251,7 @@ begin
           2:  { Windows Server 2003 }
             FVersion := osWin2003;
         end;
-      6:      { Windows Vista/Server 2008/7 }
+      6:      { Windows Vista/Server 2008/7/2012/8 }
         if versionInfo.wProductType = VER_NT_WORKSTATION then
         begin
           case versionInfo.dwMinorVersion of
@@ -249,33 +259,30 @@ begin
               FVersion := osWinVista;
             1: { Windows 7 }
               FVersion := osWin7;
+            2: { Windows 8 }
+              FVersion := osWin8;
+            3: { Windows 8.1 }
+              FVersion := osWin81;
           end;
         end else
         begin
           case versionInfo.dwMinorVersion of
             0, { Windows Server 2008 }
-            1: { Windows Server 2008 R2 }
               FVersion := osWinServer2008;
+            1: { Windows Server 2008 R2 }
+              FVersion := osWinServer2008R2;
+            2: { Windows Server 2012 }
+              FVersion := osWinServer2012;
+            3: { Windows Server 2012 R2 }
+              FVersion := osWinServer2012R2;
           end;
         end;
     end;
 
-    case Version of
-      osWin95:          VersionString := '95';
-      osWin98:          VersionString := '98';
-      osWinME:          VersionString := 'ME';
-      osWinNT3:         VersionString := 'NT 3.51';
-      osWinNT4:         VersionString := 'NT 4';
-      osWin2K:          VersionString := '2000';
-      osWinXP:          VersionString := 'XP';
-      osWin2003:        VersionString := 'Server 2003';
-      osWinVista:       VersionString := 'Vista';
-      osWin7:           VersionString := '7';
-      osWinServer2008:  VersionString := 'Server 2008';
+    if Version <> osUnknown then
     else
-                        VersionString := Format('%d.%d', [versionInfo.dwMajorVersion,
-                                                          versionInfo.dwMinorVersion]);
-    end;
+      VersionString := Format('%d.%d', [versionInfo.dwMajorVersion,
+                                        versionInfo.dwMinorVersion]);
 
     if StrLen(versionInfo.szCSDVersion) > 0 then
       VersionString := VersionString + ' ' + string(versionInfo.szCSDVersion);
