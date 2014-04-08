@@ -130,10 +130,10 @@ const
   VER_SUITE_BLADE = VER_SUITE_SERVERAPPLIANCE;
 
 
-  X2OSVersionString: array[TX2OSVerion] of string =
+  X2OSVersionString: array[TX2OSVersion] of string =
                      (
                        '95', '98', 'ME', 'NT 3.51', 'NT 4',
-                       '2000', 'XP', , 'Server 2003', 'Vista', 'Server 2008',
+                       '2000', 'XP', 'Server 2003', 'Vista', 'Server 2008',
                        'Server 2008 R2', '7', 'Server 2012', '8',
                        'Server 2012 R2', '8.1', 'Onbekend'
                      );
@@ -267,7 +267,7 @@ begin
         end else
         begin
           case versionInfo.dwMinorVersion of
-            0, { Windows Server 2008 }
+            0: { Windows Server 2008 }
               FVersion := osWinServer2008;
             1: { Windows Server 2008 R2 }
               FVersion := osWinServer2008R2;
