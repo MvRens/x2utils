@@ -280,6 +280,7 @@ begin
     end;
 
     if Version <> osUnknown then
+      VersionString := X2OSVersionString[Version]
     else
       VersionString := Format('%d.%d', [versionInfo.dwMajorVersion,
                                         versionInfo.dwMinorVersion]);
