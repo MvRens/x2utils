@@ -23,7 +23,7 @@ package X2Utils;
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
 {$DESCRIPTION 'X2Utils'}
-{$LIBSUFFIX '2007'}
+{$LIBSUFFIX 'D2007'}
 {$RUNONLY}
 {$IMPLICITBUILD ON}
 
@@ -56,8 +56,8 @@ contains
   X2UtElevation in '..\..\X2UtElevation.pas',
   X2UtPersistXML in '..\..\X2UtPersistXML.pas',
   X2UtPersistXMLBinding in '..\..\X2UtPersistXMLBinding.pas',
-  XMLDataBindingUtils in '..\..\XMLDataBinding\XMLDataBindingUtils.pas',
   X2UtCursors in '..\..\X2UtCursors.pas',
-  X2UtDelphiCompatibility in '..\..\X2UtDelphiCompatibility.pas';
+  X2UtDelphiCompatibility in '..\..\X2UtDelphiCompatibility.pas',
+  XMLDataBindingUtils in '..\..\XMLDataBindingUtils.pas';
 
 end.
