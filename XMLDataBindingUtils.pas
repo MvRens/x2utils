@@ -1,9 +1,5 @@
 {
   Helpers functions for the X2Software XML Data Binding
-
-  Last changed:   $Date: 2010-07-15 12:57:03 +0200 (do, 15 jul 2010) $
-  Revision:       $Rev: 54 $
-  URL:            $URL: http://svn.kamadev.net/private/XMLDataBinding/trunk/Shared/XMLDataBindingUtils.pas $
 }
 unit XMLDataBindingUtils;
 
@@ -83,6 +79,8 @@ const
   procedure CreateRequiredAttributes(AParent: IXMLNode; ANodes: array of string);
   procedure SortChildNodes(AParent: IXMLNode; ASortOrder: array of string);
 
+  function IsValidXMLChar(AChar: WideChar): Boolean;
+  function GetValidXMLText(AText: WideString): WideString;
 
   { Now wraps the JclMime implementation:
       Lightening fast Mime (Base64) Encoding and Decoding routines.
@@ -580,6 +578,37 @@ begin
 
     FreeAndNil(sortList);
   end;
+end;
+
+
+function IsValidXMLChar(AChar: WideChar): Boolean;
+begin
+  Result := (Ord(AChar) in [9, 10, 13]) or
+            (Ord(AChar) >= 32); 
+end;
+
+
+function GetValidXMLText(AText: WideString): WideString;
+var
+  validText: WideString;
+  sourcePos: Integer;
+  destPos: Integer;
+
+begin
+  SetLength(validText, Length(AText));
+  destPos := 0;
+
+  for sourcePos := 1 to Length(AText) do
+  begin
+    if IsValidXMLChar(AText[sourcePos]) then
+    begin
+      Inc(destPos);
+      validText[destPos] := AText[sourcePos];
+    end;
+  end;
+
+  SetLength(validText, destPos);
+  Result := validText;
 end;
 
 

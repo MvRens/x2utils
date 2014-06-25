@@ -11,7 +11,9 @@ uses
   X2UtHashes in '..\X2UtHashes.pas',
   X2UtHashesVariants in '..\X2UtHashesVariants.pas',
   NamedFormatTest in 'Units\NamedFormatTest.pas',
-  StringsTest in 'Units\StringsTest.pas';
+  StringsTest in 'Units\StringsTest.pas',
+  XMLDataBindingUtilsTest in 'Units\XMLDataBindingUtilsTest.pas',
+  XMLDataBindingUtils in '..\XMLDataBindingUtils.pas';
 
 //SettingsTest in 'Units\SettingsTest.pas',
   //IniParserTest in 'Units\IniParserTest.pas';
