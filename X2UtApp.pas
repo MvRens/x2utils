@@ -199,7 +199,7 @@ uses
   Windows;
 
 const
-  tkStrings = [tkString, tkLString, tkWString];
+  tkStrings = [tkString, tkLString, tkWString{$IF CompilerVersion >= 23}, tkUString{$IFEND}];
 
 var
   GApp:       TX2App;
@@ -359,8 +359,8 @@ begin
             GetPropList(Strings.ClassInfo, tkStrings, pProps);
 
             for iProp := 0 to iCount - 1 do begin
-              if VerQueryValueA(pBuffer, PAnsiChar(cName + AnsiString('\') + pProps^[iProp]^.Name),
-                                Pointer(pValue), dVer) then
+              if VerQueryValue(pBuffer, PChar(string(cName) + '\' + pProps^[iProp]^.Name),
+                               Pointer(pValue), dVer) then
                 SetStrProp(Strings, pProps[iProp], pValue);
             end;
           finally
