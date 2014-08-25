@@ -85,10 +85,12 @@ const
   { Now wraps the JclMime implementation:
       Lightening fast Mime (Base64) Encoding and Decoding routines.
       Coded by Ralf Junker (ralfjunker@gmx.de).}
-  function Base64Encode(AValue: String): String;
-  function Base64Decode(AValue: String): String;
-  procedure Base64DecodeToStream(AValue: String; AStream: TStream);
-  procedure Base64DecodeToFile(AValue: String; const AFileName: String);
+  function Base64Encode(AValue: String): string;
+  function Base64Decode(AValue: String): string;
+  function Base64EncodeFromStream(AStream: TStream): string;
+  function Base64EncodeFromFile(const AFileName: string): string;
+  procedure Base64DecodeToStream(AValue: string; AStream: TStream);
+  procedure Base64DecodeToFile(AValue: string; const AFileName: string);
 
 const
   XMLSchemaInstanceURI = 'http://www.w3.org/2001/XMLSchema-instance';
@@ -401,6 +403,35 @@ begin
 end;
 
 
+function Base64EncodeFromStream(AStream: TStream): string;
+var
+  output: TStringStream;
+
+begin
+  output := TStringStream.Create('');
+  try
+    MimeEncodeStream(AStream, output);
+    Result := output.DataString;
+  finally
+    FreeAndNil(output);
+  end;
+end;
+
+
+function Base64EncodeFromFile(const AFileName: string): string;
+var
+  input: TFileStream;
+
+begin
+  input := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+  try
+    Result := Base64EncodeFromStream(input);
+  finally
+    FreeAndNil(input);
+  end;
+end;
+
+
 procedure Base64DecodeToStream(AValue: String; AStream: TStream);
 var
   input: TStringStream;
@@ -417,20 +448,14 @@ end;
 
 procedure Base64DecodeToFile(AValue: String; const AFileName: String);
 var
-  input: TStringStream;
   output: TFileStream;
 
 begin
-  input := TStringStream.Create(AValue);
+  output := TFileStream.Create(AFileName, fmCreate or fmShareDenyWrite);
   try
-    output := TFileStream.Create(AFileName, fmCreate or fmShareDenyWrite);
-    try
-      MimeDecodeStream(input, output);
-    finally
-      FreeAndNil(output);
-    end;
+    Base64DecodeToStream(AValue, output);
   finally
-    FreeAndNil(input);
+    FreeAndNil(output);
   end;
 end;
 
