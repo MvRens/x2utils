@@ -374,12 +374,12 @@ begin
     begin
       if not firstItem then
       begin
-        Move(PChar(AGlue)^, resultPos^, glueLength);
+        Move(PChar(AGlue)^, resultPos^, glueLength * SizeOf(Char));
         Inc(resultPos, glueLength);
       end else
         firstItem := False;
 
-      Move(PChar(ASource[itemIndex])^, resultPos^, itemLength);
+      Move(PChar(ASource[itemIndex])^, resultPos^, itemLength * SizeOf(Char));
       Inc(resultPos, itemLength);
     end;
   end;
@@ -419,8 +419,8 @@ var
   iDest:      Integer;
 
 begin
-  iSrcLength  := Length(ASource);
-  iLength     := Length(AReplace);
+  iSrcLength  := Length(ASource) * SizeOf(Char);
+  iLength     := Length(AReplace) * SizeOf(Char);
   iDiff       := iLength - ALength;
   iDest       := 1;
 
