@@ -14,6 +14,7 @@ uses
   Windows;
 
 type
+  {$IF CompilerVersion < 23}
   TOSVersionInfoEx = packed record
     dwOSVersionInfoSize: DWORD;
     dwMajorVersion: DWORD;
@@ -27,6 +28,7 @@ type
     wProductType: Byte;
     wReserved: Byte;
   end;
+  {$IFEND}
 
 
   //:$ Enumeration of the recognized Operating System versions

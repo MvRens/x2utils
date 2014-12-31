@@ -359,7 +359,7 @@ begin
             GetPropList(Strings.ClassInfo, tkStrings, pProps);
 
             for iProp := 0 to iCount - 1 do begin
-              if VerQueryValue(pBuffer, PChar(string(cName) + '\' + pProps^[iProp]^.Name),
+              if VerQueryValue(pBuffer, PChar(string(cName) + '\' + string(pProps^[iProp]^.Name)),
                                Pointer(pValue), dVer) then
                 SetStrProp(Strings, pProps[iProp], pValue);
             end;
