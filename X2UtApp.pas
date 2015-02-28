@@ -144,6 +144,7 @@ type
     FPath:            String;
     FMainPath:        String;
     FUserPath:        String;
+    FProgramDataPath: String;
 
     function GetVersion(): TX2AppVersion;
   protected
@@ -165,26 +166,29 @@ type
     //:! Note that for packages using X2Utils.bpl, this will point to the path
     //:! of X2Utils.bpl, not the calling package! If you want the main
     //:! executable's path, use the MainPath property.
-    property FileName:  String          read FFileName;
+    property FileName: String read FFileName;
 
     //:$ Contains the path to the current module
     //:! In DLL's and BPL's, this points to the path of the current library.
     //:! Note that for packages using X2Utils.bpl, this will point to the path
     //:! of X2Utils.bpl, not the calling package! If you want the main
     //:! executable's path, use the MainPath property.
-    property Path:      String          read FPath;
+    property Path: String read FPath;
 
     //:$ Contains the path to the application's executable
     //:! This path in unaffected by the working directory which may be
     //:! specified in the shortcut launching the application. A trailing
     //:! slash is included in the path.
-    property MainPath:  String          read FMainPath;
+    property MainPath: String read FMainPath;
 
     //:$ Contains the path to the user's Application Data
-    property UserPath:  String          read FUserPath;
+    property UserPath: String read FUserPath;
+
+    //:$ Contains the path to the system's Program Data
+    property ProgramDataPath: String read FProgramDataPath;
 
     //:$ Contains the application's version information
-    property Version:   TX2AppVersion   read GetVersion;
+    property Version: TX2AppVersion read GetVersion;
   end;
 
   //:$ Returns a singleton App object
@@ -431,6 +435,13 @@ begin
     SHGetPathFromIDList(pIDL, @cPath);
 
     FUserPath := FixPath(cPath);
+
+
+    FillChar(cPath, SizeOf(cPath), #0);
+    SHGetSpecialFolderLocation(0, CSIDL_COMMON_APPDATA, pIDL);
+    SHGetPathFromIDList(pIDL, @cPath);
+
+    FProgramDataPath := FixPath(cPath);
   finally
     ifMalloc  := nil;
   end;
