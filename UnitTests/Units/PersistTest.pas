@@ -72,6 +72,11 @@ type
     function WriteInteger(const AName: String; AValue: Integer): Boolean; override;
     function WriteString(const AName: String; const AValue: String): Boolean; override;
 
+    procedure GetKeys(const ADest: TStrings); override;
+    procedure GetSections(const ADest: TStrings); override;
+    procedure DeleteKey(const AName: string); override;
+    procedure DeleteSection(const AName: string); override;
+
     property Output:  IPersistTestOutput  read FOutput  write FOutput;
   end;
 
@@ -191,7 +196,7 @@ var
   testFiler:  TX2UtPersistTestFiler;
 
 begin
-  testFiler         := TX2UtPersistTestFiler.Create(AIsReader);;
+  testFiler         := TX2UtPersistTestFiler.Create(AIsReader);
   testFiler.Output  := Self.Output;
 
   Result  := testFiler;
@@ -264,6 +269,24 @@ begin
   Output.Lines.Add(Format('String:%s', [AValue]));
   Result := True;
 end;
+
+
+procedure TX2UtPersistTestFiler.GetKeys(const ADest: TStrings);
+begin
+end;
+
+procedure TX2UtPersistTestFiler.GetSections(const ADest: TStrings);
+begin
+end;
+
+procedure TX2UtPersistTestFiler.DeleteKey(const AName: string);
+begin
+end;
+
+procedure TX2UtPersistTestFiler.DeleteSection(const AName: string);
+begin
+end;
+
 
 
 { TPersistTestOutput }

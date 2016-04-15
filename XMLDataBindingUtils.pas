@@ -18,7 +18,7 @@ type
   TXMLDateTimeFormat  = (xdtDateTime, xdtDate, xdtTime);
   TXMLTimeFragment    = (xtfMilliseconds, xtfTimezone);
   TXMLTimeFragments   = set of TXMLTimeFragment;
-
+  TDateConvert        = (dcToUtc, dcToLocal);
 
   IXSDValidate  = interface
     ['{3BFDC851-7459-403B-87B3-A52E9E85BC8C}']
@@ -197,12 +197,79 @@ begin
 end;
 
 
+function InDSTSpan(ADate: TDateTime; ATimeZoneInfo: TTimeZoneInformation): boolean;
+var
+  lowerDayLight: TDateTime;
+  upperDayLight: TDateTime;
+  day: TDate;
+  days: Integer;
+
+  function GetDay(AYear, AMonth, ADay, ADayOfWeek: Integer): TDate;
+  var
+    I, Counter : Integer;
+  begin
+    Result := 0;
+    Counter := 0;
+
+    days := DaysInAMonth(AYear, AMonth);
+    for I := 1 to days do
+    begin
+      Result := EncodeDate(AYear, AMonth, I);
+      // Delphi DayOfWeek 1 = Sunday
+      // TimeZoneInfo.wDayOfWeek 0 = Sunday
+      if DayOfWeek(Result) -1 = ADayOfWeek then
+      begin
+        inc(Counter);
+        if (counter = ADay) or ((Counter < Aday) and (I >= days - 6)) then
+          break;
+      end;
+    end;
+  end;
+  
+begin
+  with ATimeZoneInfo.DaylightDate do
+  begin
+    day := GetDay(wYear + YearOf(ADate), wMonth, wDay, wDayOfWeek);
+    lowerDayLight := day + EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
+  end;
+
+  with ATimeZoneInfo.StandardDate do
+  begin
+    day := GetDay(wYear + YearOf(ADate), wMonth, wDay, wDayOfWeek);
+    upperDayLight := day + EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
+  end;
+
+  Result := (ADate >= lowerDayLight) and (ADate <= upperDayLight);
+end;
+
+
+function ConvertDate(ADate: TDateTime; ADateconvert: TDateConvert): TDateTime;
+var
+  timeZone: TTimeZoneInformation;
+  timeZoneID: Cardinal;
+  localOffset: Integer;
+
+begin
+  FillChar(timeZone, SizeOf(TTimeZoneInformation), #0);
+  timeZoneID := GetTimeZoneInformation(timeZone);
+
+  if timeZoneID in [TIME_ZONE_ID_STANDARD, TIME_ZONE_ID_DAYLIGHT] then
+    localOffset := -timeZone.Bias - IfThen(InDSTSpan(ADate, timeZone), timeZone.DaylightBias, timeZone.StandardBias)
+  else
+    localOffset := 0;
+
+  if ADateconvert = dcToUtc then
+    localOffset := localOffset * -1;
+
+  Result      := IncMinute(ADate, localOffset);
+end;
+
 
 function DateTimeToXML(ADate: TDateTime; AFormat: TXMLDateTimeFormat; ATimeFragments: TXMLTimeFragments): string;
 var
   formatSettings: TFormatSettings;
-  timeZone: TTimeZoneInformation;
-  timeOffset: Integer;
+  utcDate: TDateTime;
+  offsetMinutes: Integer;
 
 begin
   formatSettings := GetDefaultFormatSettings;
@@ -213,21 +280,16 @@ begin
     if xtfMilliseconds in ATimeFragments then
       Result  := Result + FormatDateTime(XMLMsecsFormat, ADate);
 
-    if xtfTimezone in ATimeFragments then
+    if (xtfTimezone in ATimeFragments) then
     begin
-      FillChar(timeZone, SizeOf(TTimeZoneInformation), #0);
-      if GetTimeZoneInformation(timeZone) <> TIME_ZONE_ID_INVALID then
-      begin
-        timeOffset  := -timeZone.Bias;
+      utcDate := ConvertDate(ADate, dcToUtc);
+      offsetMinutes := MinutesBetween(ADate, utcDate);
 
-        if timeOffset = 0 then
-          Result  := Result + XMLTimezoneZulu
-        else
-          Result  := Result + Format(XMLTimezoneFormat,
-                                     [XMLTimezoneSigns[timeOffset > 0],
-                                      Abs(timeZone.Bias div 60),
-                                      Abs(timeZone.Bias mod 60)]);
-      end;
+      if offsetMinutes = 0 then
+        Result  := Result + XMLTimezoneZulu
+      else
+        Result := Result + Format(XMLTimezoneFormat,
+          [XMLTimezoneSigns[offsetMinutes > 0], offsetMinutes div 60, offsetMinutes mod 60]);
     end;
   end;
 end;
@@ -252,8 +314,6 @@ var
   msec: Integer;
   hasTimezone: Boolean;
   xmlOffset: Integer;
-  timeZone: TTimeZoneInformation;
-  localOffset: Integer;
 
 begin
   Result  := 0;
@@ -326,7 +386,6 @@ begin
       if Length(time) > 0 then
       begin
         hasTimezone := False;
-        xmlOffset   := 0;
 
         if time[1] = XMLTimezoneZulu then
         begin
@@ -343,18 +402,13 @@ begin
 
             if time[1] = XMLTimezoneSigns[False] then
               xmlOffset := -xmlOffset;
+
+            Result := IncMinute(Result, - xmlOffset);
           end;
         end;
 
         if hasTimezone then
-        begin
-          FillChar(timeZone, SizeOf(TTimeZoneInformation), #0);
-          if GetTimeZoneInformation(timeZone) <> TIME_ZONE_ID_INVALID then
-          begin
-            localOffset := -timeZone.Bias;
-            Result      := IncMinute(Result, localOffset - xmlOffset);
-          end;
-        end;
+          Result := ConvertDate(Result, dcToLocal);
       end;
     end;
   end;
