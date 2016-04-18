@@ -201,10 +201,10 @@ function InDSTSpan(ADate: TDateTime; ATimeZoneInfo: TTimeZoneInformation): boole
 var
   lowerDayLight: TDateTime;
   upperDayLight: TDateTime;
-  day: TDate;
+  day: TDateTime;
   days: Integer;
 
-  function GetDay(AYear, AMonth, ADay, ADayOfWeek: Integer): TDate;
+  function GetDay(AYear, AMonth, ADay, ADayOfWeek: Integer): TDateTime;
   var
     I, Counter : Integer;
   begin
