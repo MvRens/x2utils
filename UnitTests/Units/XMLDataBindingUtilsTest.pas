@@ -14,6 +14,7 @@ type
     procedure TestXMLToDate;
     procedure TestDateTimeToXML;
     procedure TestDateToXML;
+    procedure TestLongMilliseconds;
   end;
 
 
@@ -93,6 +94,11 @@ begin
   CheckEquals('2016-04-09', DateTimeToXML(EncodeDate(2016, 4, 9), xdtDate));
 end;
 
+
+procedure TXMLDataBindingUtilsTest.TestLongMilliseconds;
+begin
+  CheckEquals('04-05-2016 13:17:08.013', FormatDateTime('dd-mm-yyyy hh:nn:ss.zzz', XMLToDateTime('2016-05-04T11:17:08.0136668Z', xdtDateTime)));
+end;
 
 
 initialization

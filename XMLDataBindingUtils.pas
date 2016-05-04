@@ -314,6 +314,7 @@ var
   msec: Integer;
   hasTimezone: Boolean;
   xmlOffset: Integer;
+  endPos: Integer;
 
 begin
   Result  := 0;
@@ -373,11 +374,20 @@ begin
       begin
         if time[1] = '.' then
         begin
-          { Parse milliseconds (.zzz) }
-          if not TryStrToInt(Copy(time, 2, 3), msec) then
+          { Parse milliseconds (.zzz+) }
+          Delete(time, 1, 1);
+          endPos := 1;
+
+          while (endPos <= Length(time)) and (CharInSet(time[endPos], ['0'..'9'])) do
+            Inc(endPos);
+
+          Dec(endPos);
+
+          if (endPos = 0) or (not TryStrToInt(Copy(time, 1, Min(endPos, 3)), msec)) then
             msec  := 0;
 
-          Delete(time, 1, 4);
+          if endPos > 0 then
+            Delete(time, 1, endPos);
         end;
       end;
 
