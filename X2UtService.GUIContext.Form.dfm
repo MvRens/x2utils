@@ -13,6 +13,7 @@ object X2ServiceContextGUIForm: TX2ServiceContextGUIForm
   Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = False
+  Position = poScreenCenter
   OnCloseQuery = FormCloseQuery
   DesignSize = (
     285
@@ -27,7 +28,7 @@ object X2ServiceContextGUIForm: TX2ServiceContextGUIForm
     Anchors = [akLeft, akBottom]
     Caption = '&Close'
     TabOrder = 0
-    ExplicitTop = 180
+    OnClick = btnCloseClick
   end
   object gbStatus: TGroupBox
     AlignWithMargins = True
@@ -42,7 +43,6 @@ object X2ServiceContextGUIForm: TX2ServiceContextGUIForm
     Align = alTop
     Caption = ' Status '
     TabOrder = 1
-    ExplicitWidth = 261
     object lblStatus: TLabel
       Left = 34
       Top = 26
@@ -50,11 +50,13 @@ object X2ServiceContextGUIForm: TX2ServiceContextGUIForm
       Height = 13
       Caption = 'Starting...'
     end
-    object Shape1: TShape
+    object shpStatus: TShape
       Left = 12
       Top = 24
       Width = 16
       Height = 16
+      Brush.Color = 33023
+      Shape = stCircle
     end
   end
   object gbCustomControl: TGroupBox
@@ -89,7 +91,6 @@ object X2ServiceContextGUIForm: TX2ServiceContextGUIForm
       TabOrder = 0
       Text = '128'
       OnChange = edtControlCodeChange
-      ExplicitWidth = 173
     end
     object btnSend: TButton
       Left = 180
@@ -99,7 +100,7 @@ object X2ServiceContextGUIForm: TX2ServiceContextGUIForm
       Anchors = [akTop, akRight]
       Caption = '&Send'
       TabOrder = 1
-      ExplicitLeft = 251
+      OnClick = btnSendClick
     end
   end
 end

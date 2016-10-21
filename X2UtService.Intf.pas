@@ -65,12 +65,14 @@ implementation
 function TX2CustomService.Start(AContext: IX2ServiceContext): Boolean;
 begin
   FContext := AContext;
+  Result := True;
 end;
 
 
 function TX2CustomService.Stop: Boolean;
 begin
   FContext := nil;
+  Result := True;
 end;
 
 

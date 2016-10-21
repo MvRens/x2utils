@@ -26,6 +26,8 @@ uses
 constructor TX2ServiceContextGUI.Create(AService: IX2Service);
 begin
   inherited Create;
+
+  StartService(AService);
 end;
 
 
