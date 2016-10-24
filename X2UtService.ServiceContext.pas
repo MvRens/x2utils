@@ -10,6 +10,8 @@ type
   protected
     procedure StartService(AService: IX2Service); virtual;
   public
+    class function IsInstallUninstall: Boolean;
+
     constructor Create(AService: IX2Service);
 
     { IX2ServiceContext }
@@ -20,7 +22,10 @@ type
 implementation
 uses
   System.Classes,
-  Vcl.SvcMgr;
+  System.SysUtils,
+  Vcl.SvcMgr,
+
+  X2UtElevation;
 
 
 type
@@ -56,9 +61,21 @@ end;
 
 
 { TX2ServiceContextService }
+class function TX2ServiceContextService.IsInstallUninstall: Boolean;
+begin
+  Result := FindCmdLineSwitch('install', ['-', '/'], True) or
+            FindCmdLineSwitch('uninstall', ['-', '/'], True);
+end;
+
+
 constructor TX2ServiceContextService.Create(AService: IX2Service);
 begin
   inherited Create;
+
+  if IsInstallUninstall and (not IsElevated) then
+    raise Exception.Create('Elevation is required for install or uninstall');
+
+  StartService(AService);
 end;
 
 
@@ -76,8 +93,8 @@ begin
   Application.Initialize;
   ServiceModuleInstance := TX2ServiceModule.Create(Application, Self, AService);
   try
-    ServiceModuleInstance.DisplayName := '';//
-    ServiceModuleInstance.ServiceStartName := '';//
+    ServiceModuleInstance.DisplayName := AService.DisplayName;
+    ServiceModuleInstance.Name := AService.ServiceName;
 
     Application.Run;
   finally
@@ -89,7 +106,8 @@ end;
 { TX2ServiceModule }
 constructor TX2ServiceModule.Create(AOwner: TComponent; AContext: IX2ServiceContext; AService: IX2Service);
 begin
-  inherited Create(AOwner);
+  // Skip default constructor to prevent DFM streaming
+  CreateNew(AOwner);
 
   FContext := AContext;
   FService := AService;

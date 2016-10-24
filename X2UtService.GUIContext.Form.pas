@@ -6,14 +6,12 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   Vcl.Forms,
+  Vcl.Graphics,
   Vcl.StdCtrls,
   Winapi.Messages,
 
   X2UtService.Intf;
 
-
-const
-  CM_AFTERSHOW = WM_USER + 1;
 
 type
   TX2ServiceContextGUIForm = class(TForm)
@@ -33,12 +31,15 @@ type
   private
     FContext: IX2ServiceContext;
     FService: IX2Service;
+    FServiceThread: TThread;
+    FAllowClose: Boolean;
   protected
     procedure DoShow; override;
 
-    procedure CMAfterShow(var Msg: TMessage); message CM_AFTERSHOW;
-
     function GetControlCode: Byte;
+    procedure SetStatus(const AMessage: string; AColor: TColor);
+
+    property ServiceThread: TThread read FServiceThread;
   public
     property Context: IX2ServiceContext read FContext write FContext;
     property Service: IX2Service read FService write FService;
@@ -47,9 +48,10 @@ type
 
 implementation
 uses
+  System.Generics.Collections,
   System.Math,
+  System.SyncObjs,
   System.SysUtils,
-  Vcl.Graphics,
   Winapi.Windows;
 
 
@@ -63,34 +65,85 @@ const
   StatusColorStopped = clRed;
 
 
-// #ToDo1 -oMvR: 21-10-2016: separate service handling out to thread to prevent blocking of the UI
+type
+  TX2ServiceThread = class(TThread)
+  private
+    FContext: IX2ServiceContext;
+    FService: IX2Service;
+    FWakeEvent: TEvent;
+    FSendCodeList: TList<Integer>;
+
+    FOnStarted: TThreadProcedure;
+    FOnStartFailed: TThreadProcedure;
+    FOnStopped: TThreadProcedure;
+    FOnStopFailed: TThreadProcedure;
+  protected
+    procedure Execute; override;
+    procedure TerminatedSet; override;
+
+    procedure FlushSendCodeList;
+
+    property Context: IX2ServiceContext read FContext;
+    property Service: IX2Service read FService;
+    property WakeEvent: TEvent read FWakeEvent;
+  public
+    constructor Create(AContext: IX2ServiceContext; AService: IX2Service);
+    destructor Destroy; override;
+
+    procedure SendControlCode(ACode: Byte);
+
+    property OnStarted: TThreadProcedure read FOnStarted write FOnStarted;
+    property OnStartFailed: TThreadProcedure read FOnStartFailed write FOnStartFailed;
+    property OnStopped: TThreadProcedure read FOnStopped write FOnStopped;
+    property OnStopFailed: TThreadProcedure read FOnStopFailed write FOnStopFailed;
+  end;
+
 
 
 { TX2ServiceContextGUIForm }
 procedure TX2ServiceContextGUIForm.DoShow;
+var
+  serviceThread: TX2ServiceThread;
 begin
   inherited DoShow;
 
-  PostMessage(Self.Handle, CM_AFTERSHOW, 0, 0);
-end;
-
-
-procedure TX2ServiceContextGUIForm.CMAfterShow(var Msg: TMessage);
-begin
-  shpStatus.Brush.Color := StatusColorStarting;
-  lblStatus.Caption := 'Starting...';
-  Application.ProcessMessages;
-
-  if Service.Start(Context) then
+  if not Assigned(FServiceThread) then
   begin
-    shpStatus.Brush.Color := StatusColorStarted;
-    lblStatus.Caption := 'Started';
-  end else
-  begin
-    shpStatus.Brush.Color := StatusColorStopped;
-    lblStatus.Caption := 'Failed to start';
+    SetStatus('Starting...', StatusColorStarting);
+    serviceThread := TX2ServiceThread.Create(Context, Service);
+    serviceThread.OnStarted :=
+      procedure
+      begin
+        SetStatus('Started', StatusColorStarted);
+      end;
+
+    serviceThread.OnStartFailed :=
+      procedure
+      begin
+        SetStatus('Start failed', StatusColorStopped);
+        FServiceThread := nil;
+      end;
+
+    serviceThread.OnStopped :=
+      procedure
+      begin
+        SetStatus('Stopped', StatusColorStopped);
+
+        FAllowClose := True;
+        Close;
+      end;
+
+    serviceThread.OnStopFailed :=
+      procedure
+      begin
+        SetStatus('Stop failed', StatusColorStarted);
+      end;
+
+    FServiceThread := serviceThread;
+    FServiceThread.Start;
   end;
 end;
+
 
 
 procedure TX2ServiceContextGUIForm.edtControlCodeChange(Sender: TObject);
@@ -101,7 +154,7 @@ end;
 
 procedure TX2ServiceContextGUIForm.btnSendClick(Sender: TObject);
 begin
-  Service.DoCustomControl(GetControlCode);
+  (ServiceThread as TX2ServiceThread).SendControlCode(GetControlCode);
 end;
 
 
@@ -113,20 +166,124 @@ end;
 
 procedure TX2ServiceContextGUIForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  shpStatus.Brush.Color := StatusColorStopping;
-  lblStatus.Caption := 'Stopping...';
-  Application.ProcessMessages;
+  if not FAllowClose then
+  begin
+    SetStatus('Stopping...', StatusColorStopping);
+    CanClose := False;
 
-  CanClose := Service.Stop;
-
-  if not CanClose then
-    lblStatus.Caption := 'Failed to stop';
+    ServiceThread.Terminate;
+  end;
 end;
 
 
 function TX2ServiceContextGUIForm.GetControlCode: Byte;
 begin
   Result := Byte(Min(Max(StrToIntDef(edtControlCode.Text, 0), 128), 255));
+end;
+
+
+procedure TX2ServiceContextGUIForm.SetStatus(const AMessage: string; AColor: TColor);
+begin
+  shpStatus.Brush.Color := AColor;
+  lblStatus.Caption := AMessage;
+end;
+
+
+{ TX2ServiceThread }
+constructor TX2ServiceThread.Create(AContext: IX2ServiceContext; AService: IX2Service);
+begin
+  inherited Create(True);
+
+  FContext := AContext;
+  FService := AService;
+
+  FWakeEvent := TEvent.Create(nil, False, False, '');
+  FSendCodeList := TList<Integer>.Create;
+end;
+
+
+destructor TX2ServiceThread.Destroy;
+begin
+  FreeAndNil(FWakeEvent);
+  FreeAndNil(FSendCodeList);
+
+  inherited Destroy;
+end;
+
+
+procedure TX2ServiceThread.Execute;
+begin
+  try
+    Service.Start(Context);
+  except
+    if Assigned(FOnStartFailed) then
+      Synchronize(FOnStartFailed);
+
+    exit;
+  end;
+
+  if Assigned(FOnStarted) then
+    Synchronize(FOnStarted);
+
+  while True do
+  begin
+    try
+      WakeEvent.WaitFor(INFINITE);
+
+      if Terminated then
+      begin
+        Service.Stop;
+
+        if Assigned(FOnStopped) then
+          Synchronize(FOnStopped);
+
+        break;
+      end;
+
+      FlushSendCodeList;
+    except
+      if Assigned(FOnStopFailed) then
+        Synchronize(FOnStopFailed);
+    end;
+  end;
+end;
+
+
+procedure TX2ServiceThread.FlushSendCodeList;
+var
+  code: Byte;
+
+begin
+  System.TMonitor.Enter(FSendCodeList);
+  try
+    for code in FSendCodeList do
+      Service.DoCustomControl(code);
+
+    FSendCodeList.Clear;
+  finally
+    System.TMonitor.Exit(FSendCodeList);
+  end;
+end;
+
+
+procedure TX2ServiceThread.TerminatedSet;
+begin
+  inherited TerminatedSet;
+
+  WakeEvent.SetEvent;
+end;
+
+
+procedure TX2ServiceThread.SendControlCode(ACode: Byte);
+begin
+  System.TMonitor.Enter(FSendCodeList);
+  try
+    FSendCodeList.Add(ACode);
+  finally
+    System.TMonitor.Exit(FSendCodeList);
+  end;
+
+  WakeEvent.SetEvent;
 end;
 
 end.

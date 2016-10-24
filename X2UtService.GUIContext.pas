@@ -19,6 +19,8 @@ type
 
 implementation
 uses
+  Vcl.Forms,
+
   X2UtService.GUIContext.Form;
 
 
@@ -38,16 +40,18 @@ end;
 
 
 procedure TX2ServiceContextGUI.StartService(AService: IX2Service);
-begin
-  with TX2ServiceContextGUIForm.Create(nil) do
-  try
-    Caption := AService.DisplayName;
-    Service := AService;
+var
+  serviceForm: TX2ServiceContextGUIForm;
 
-    ShowModal;
-  finally
-    Free;
-  end;
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskBar := True;
+
+  Application.CreateForm(TX2ServiceContextGUIForm, serviceForm);
+  serviceForm.Caption := AService.DisplayName;
+  serviceForm.Service := AService;
+
+  Application.Run;
 end;
 
 end.

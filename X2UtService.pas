@@ -53,12 +53,9 @@ end;
 { TX2Service }
 class function TX2Service.Run(AService: IX2Service): IX2ServiceContext;
 begin
-  if FindCmdLineSwitch('install', ['-', '/'], True) or
-     FindCmdLineSwitch('uninstall', ['-', '/'], True) or
-     (not IsUserInteractive) then
-  begin
-    Result := TX2ServiceContextService.Create(AService);
-  end else
+  if TX2ServiceContextService.IsInstallUninstall or (not IsUserInteractive) then
+    Result := TX2ServiceContextService.Create(AService)
+  else
     Result := TX2ServiceContextGUI.Create(AService);
 end;
 
