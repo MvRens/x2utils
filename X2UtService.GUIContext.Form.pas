@@ -23,10 +23,14 @@ type
     lblControlCode: TLabel;
     edtControlCode: TEdit;
     btnSend: TButton;
+    cmbControlCodePredefined: TComboBox;
+    btnSendPredefined: TButton;
 
+    procedure FormCreate(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure edtControlCodeChange(Sender: TObject);
     procedure btnSendClick(Sender: TObject);
+    procedure btnSendPredefinedClick(Sender: TObject);
     procedure btnCloseClick(Sender: TObject);
   private
     FContext: IX2ServiceContext;
@@ -35,6 +39,8 @@ type
     FAllowClose: Boolean;
   protected
     procedure DoShow; override;
+
+    procedure UpdatePredefinedControlCodes; virtual;
 
     function GetControlCode: Byte;
     procedure SetStatus(const AMessage: string; AColor: TColor);
@@ -101,6 +107,12 @@ type
 
 
 { TX2ServiceContextGUIForm }
+procedure TX2ServiceContextGUIForm.FormCreate(Sender: TObject);
+begin
+  btnClose.Left := (ClientWidth - btnClose.Width) div 2;
+end;
+
+
 procedure TX2ServiceContextGUIForm.DoShow;
 var
   serviceThread: TX2ServiceThread;
@@ -109,6 +121,8 @@ begin
 
   if not Assigned(FServiceThread) then
   begin
+    UpdatePredefinedControlCodes;
+
     SetStatus('Starting...', StatusColorStarting);
     serviceThread := TX2ServiceThread.Create(Context, Service);
     serviceThread.OnStarted :=
@@ -158,6 +172,19 @@ begin
 end;
 
 
+procedure TX2ServiceContextGUIForm.btnSendPredefinedClick(Sender: TObject);
+var
+  code: Byte;
+
+begin
+  if cmbControlCodePredefined.ItemIndex > -1 then
+  begin
+    code := Byte(cmbControlCodePredefined.Items.Objects[cmbControlCodePredefined.ItemIndex]);
+    (ServiceThread as TX2ServiceThread).SendControlCode(code);
+  end;
+end;
+
+
 procedure TX2ServiceContextGUIForm.btnCloseClick(Sender: TObject);
 begin
   Close;
@@ -172,6 +199,32 @@ begin
     CanClose := False;
 
     ServiceThread.Terminate;
+  end;
+end;
+
+
+procedure TX2ServiceContextGUIForm.UpdatePredefinedControlCodes;
+var
+  serviceCustomControl: IX2ServiceCustomControl;
+
+begin
+  cmbControlCodePredefined.Items.Clear;
+
+  if Supports(Service, IX2ServiceCustomControl, serviceCustomControl) then
+  begin
+    serviceCustomControl.EnumCustomControlCodes(
+      procedure(ACode: Byte; const ADescription: string)
+      begin
+        cmbControlCodePredefined.Items.AddObject(Format('%s (%d)', [ADescription, ACode]), TObject(ACode));
+      end);
+
+    cmbControlCodePredefined.Enabled := True;
+    cmbControlCodePredefined.ItemIndex := 0;
+    btnSendPredefined.Enabled := cmbControlCodePredefined.Items.Count > 0;
+  end else
+  begin
+    cmbControlCodePredefined.Enabled := False;
+    btnSendPredefined.Enabled := False;
   end;
 end;
 

@@ -40,6 +40,17 @@ type
   end;
 
 
+
+  TX2ServiceCustomControlProc = reference to procedure(ACode: Byte; const ADescription: string);
+
+  { Implement this to enable discovery of supported custom control codes
+    for use in interactive contexts. }
+  IX2ServiceCustomControl = interface
+    ['{D6363AC5-3DD5-4897-90A7-6F63D82B6A74}']
+    procedure EnumCustomControlCodes(Yield: TX2ServiceCustomControlProc);
+  end;
+
+
   TX2CustomService = class(TInterfacedObject, IX2Service)
   private
     FContext: IX2ServiceContext;

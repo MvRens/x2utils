@@ -60,6 +60,11 @@ contains
   X2UtPersistXMLBinding in '..\..\X2UtPersistXMLBinding.pas',
   XMLDataBindingUtils in '..\..\XMLDataBindingUtils.pas',
   X2UtDelphiCompatibility in '..\..\X2UtDelphiCompatibility.pas',
-  X2UtCursors in '..\..\X2UtCursors.pas';
+  X2UtCursors in '..\..\X2UtCursors.pas',
+  X2UtService.GUIContext.Form in '..\..\X2UtService.GUIContext.Form.pas' {X2ServiceContextGUIForm},
+  X2UtService.GUIContext in '..\..\X2UtService.GUIContext.pas',
+  X2UtService.Intf in '..\..\X2UtService.Intf.pas',
+  X2UtService in '..\..\X2UtService.pas',
+  X2UtService.ServiceContext in '..\..\X2UtService.ServiceContext.pas';
 
 end.
