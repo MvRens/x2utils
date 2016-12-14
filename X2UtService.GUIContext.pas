@@ -49,6 +49,7 @@ begin
 
   Application.CreateForm(TX2ServiceContextGUIForm, serviceForm);
   serviceForm.Caption := AService.DisplayName;
+  serviceForm.Context := Self;
   serviceForm.Service := AService;
 
   Application.Run;
