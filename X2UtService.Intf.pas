@@ -2,7 +2,8 @@ unit X2UtService.Intf;
 
 interface
 uses
-  Classes;
+  System.Classes,
+  System.SysUtils;
 
 
 type
@@ -14,6 +15,12 @@ type
     function GetMode: TX2ServiceMode;
 
     property Mode: TX2ServiceMode read GetMode;
+  end;
+
+
+  IX2InteractiveServiceContext = interface(IX2ServiceContext)
+    ['{82E69997-013D-4349-8060-B9F31B72CDF4}']
+    procedure RunInteractive(AProc: TThreadProcedure);
   end;
 
 

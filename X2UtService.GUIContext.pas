@@ -2,11 +2,13 @@ unit X2UtService.GUIContext;
 
 interface
 uses
+  System.Classes,
+
   X2UtService.Intf;
 
 
 type
-  TX2ServiceContextGUI = class(TInterfacedObject, IX2ServiceContext)
+  TX2ServiceContextGUI = class(TInterfacedObject, IX2ServiceContext, IX2InteractiveServiceContext)
   protected
     procedure StartService(AService: IX2Service); virtual;
   public
@@ -14,6 +16,10 @@ type
 
     { IX2ServiceContext }
     function GetMode: TX2ServiceMode;
+
+
+    { IX2InteractiveServiceContext }
+    procedure RunInteractive(AProc: TThreadProcedure);
   end;
 
 
@@ -53,6 +59,12 @@ begin
   serviceForm.Service := AService;
 
   Application.Run;
+end;
+
+
+procedure TX2ServiceContextGUI.RunInteractive(AProc: TThreadProcedure);
+begin
+  TThread.Queue(nil, AProc);
 end;
 
 end.
