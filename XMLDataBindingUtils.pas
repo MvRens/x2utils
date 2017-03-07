@@ -14,6 +14,7 @@ uses
 
 type
   EBase64Error        = class(Exception);
+  EXSDValidationError = class(Exception);
 
   TXMLDateTimeFormat  = (xdtDateTime, xdtDate, xdtTime);
   TXMLTimeFragment    = (xtfMilliseconds, xtfTimezone);
@@ -23,6 +24,17 @@ type
   IXSDValidate  = interface
     ['{3BFDC851-7459-403B-87B3-A52E9E85BC8C}']
     procedure XSDValidate;
+  end;
+
+  IXSDValidateStrictResult = interface
+    ['{F10E1CB2-ECDF-4215-AF2C-28B5C6C51A90}']
+    procedure MissingElement(AParent: IXMLNode; const AName: string);
+    procedure MissingAttribute(AParent: IXMLNode; const AName: string);
+  end;
+
+  IXSDValidateStrict = interface
+    ['{82C3B08E-F327-4D38-9FE2-F99925E7E401}']
+    procedure XSDValidateStrict(AResult: IXSDValidateStrictResult);
   end;
 
 
@@ -75,6 +87,10 @@ const
   procedure SetNodeIsNil(ANode: IXMLNode; ASetNil: Boolean);
 
   procedure XSDValidate(AParent: IXMLNode; ARecurse: Boolean = True; AValidateParent: Boolean = True);
+  procedure XSDValidateStrict(AParent: IXMLNode; ARecurse: Boolean = True; AValidateParent: Boolean = True); overload;
+  procedure XSDValidateStrict(AResult: IXSDValidateStrictResult; AParent: IXMLNode; ARecurse: Boolean = True; AValidateParent: Boolean = True); overload;
+  procedure ValidateRequiredElements(AResult: IXSDValidateStrictResult; AParent: IXMLNode; ANodes: array of string);
+  procedure ValidateRequiredAttributes(AResult: IXSDValidateStrictResult; AParent: IXMLNode; ANodes: array of string);
   procedure CreateRequiredElements(AParent: IXMLNode; ANodes: array of string);
   procedure CreateRequiredAttributes(AParent: IXMLNode; ANodes: array of string);
   procedure SortChildNodes(AParent: IXMLNode; ASortOrder: array of string);
@@ -141,6 +157,29 @@ type
     Node: IXMLNode;
     SortIndex: Integer;
     OriginalIndex: Integer;
+  end;
+
+
+  TXSDValidateStrictResult = class(TInterfacedPersistent, IXSDValidateStrictResult)
+  private
+    FMissingElements: TStrings;
+    FMissingAttributes: TStrings;
+
+    function GetMissingAttributes: TStrings;
+    function GetMissingElements: TStrings;
+  protected
+    function GetNodeTree(AParent: IXMLNode; const AName: string): string;
+
+    property MissingElements: TStrings read GetMissingElements;
+    property MissingAttributes: TStrings read GetMissingAttributes;
+  public
+    destructor Destroy; override;
+
+    procedure RaiseResult;
+
+    { IXSDValidateStrictResult }
+    procedure MissingElement(AParent: IXMLNode; const AName: string);
+    procedure MissingAttribute(AParent: IXMLNode; const AName: string);
   end;
 
 
@@ -586,6 +625,65 @@ begin
   begin
     for childIndex := 0 to Pred(AParent.ChildNodes.Count) do
       XSDValidate(AParent.ChildNodes[childIndex], ARecurse, True);
+  end;
+end;
+
+
+procedure XSDValidateStrict(AParent: IXMLNode; ARecurse: Boolean; AValidateParent: Boolean);
+var
+  result: TXSDValidateStrictResult;
+
+begin
+  result := TXSDValidateStrictResult.Create;
+  try
+    XSDValidateStrict(result, AParent, ARecurse, AValidateParent);
+
+    result.RaiseResult;
+  finally
+    FreeAndNil(result);
+  end;
+end;
+
+
+procedure XSDValidateStrict(AResult: IXSDValidateStrictResult; AParent: IXMLNode; ARecurse: Boolean; AValidateParent: Boolean);
+var
+  validate: IXSDValidateStrict;
+  childIndex: Integer;
+
+begin
+  if AValidateParent and Supports(AParent, IXSDValidateStrict, validate) then
+    validate.XSDValidateStrict(AResult);
+
+  if ARecurse then
+  begin
+    for childIndex := 0 to Pred(AParent.ChildNodes.Count) do
+      XSDValidateStrict(AResult, AParent.ChildNodes[childIndex], ARecurse, True);
+  end;
+end;
+
+
+procedure ValidateRequiredElements(AResult: IXSDValidateStrictResult; AParent: IXMLNode; ANodes: array of string);
+var
+  nodeIndex: Integer;
+
+begin
+  for nodeIndex := Low(ANodes) to High(ANodes) do
+  begin
+    if not Assigned(AParent.ChildNodes.FindNode(ANodes[nodeIndex])) then
+      AResult.MissingElement(AParent, ANodes[nodeIndex]);
+  end;
+end;
+
+
+procedure ValidateRequiredAttributes(AResult: IXSDValidateStrictResult; AParent: IXMLNode; ANodes: array of string);
+var
+  nodeIndex: Integer;
+
+begin
+  for nodeIndex := Low(ANodes) to High(ANodes) do
+  begin
+    if not Assigned(AParent.AttributeNodes.FindNode(ANodes[nodeIndex])) then
+      AResult.MissingAttribute(AParent, ANodes[nodeIndex]);
   end;
 end;
 
@@ -1096,6 +1194,121 @@ begin
     BytesRead := InputStream.Read(InputBuffer, Length(InputBuffer));
   end;
   OutputStream.Write(OutputBuffer, MimeDecodePartialEnd(OutputBuffer, ByteBuffer, ByteBufferSpace));
+end;
+
+
+{ TXSDValidateStrictResult }
+destructor TXSDValidateStrictResult.Destroy;
+begin
+  FreeAndNil(FMissingAttributes);
+  FreeAndNil(FMissingElements);
+
+  inherited Destroy;
+end;
+
+
+procedure TXSDValidateStrictResult.MissingElement(AParent: IXMLNode; const AName: string);
+begin
+  MissingElements.Add(GetNodeTree(AParent, AName));
+end;
+
+
+procedure TXSDValidateStrictResult.MissingAttribute(AParent: IXMLNode; const AName: string);
+begin
+  MissingAttributes.Add(GetNodeTree(AParent, AName));
+end;
+
+
+procedure TXSDValidateStrictResult.RaiseResult;
+var
+  msg: string;
+
+  procedure AddList(AList: TStrings; const ATitle: string);
+  var
+    itemIndex: Integer;
+
+  begin
+    if not Assigned(AList) then
+      exit;
+
+    msg := msg + ATitle + #13#10;
+    for itemIndex := 0 to Pred(AList.Count) do
+      msg := msg + '- ' + AList[itemIndex] + #13#10;
+
+    msg := msg + #13#10;
+  end;
+
+begin
+  msg := '';
+  AddList(FMissingElements, 'Missing elements:');
+  AddList(FMissingAttributes, 'Missing attributes:');
+
+  if Length(msg) > 0 then
+    raise EXSDValidationError.Create('XSD validation failed.'#13#10 + Trim(msg));
+end;
+
+
+function TXSDValidateStrictResult.GetMissingElements: TStrings;
+begin
+  if not Assigned(FMissingElements) then
+    FMissingElements := TStringList.Create;
+
+  Result := FMissingElements;
+end;
+
+
+function TXSDValidateStrictResult.GetNodeTree(AParent: IXMLNode; const AName: string): string;
+
+
+  function GetNodeIndex(ANodeCollection: IXMLNodeCollection; ANode: IXMLNode): string;
+  var
+    nodeIndex: Integer;
+  begin
+    Result := '?';
+
+    for nodeIndex := 0 to Pred(ANodeCollection.Count) do
+      if ANodeCollection[nodeIndex] = ANode then
+      begin
+        Result := IntToStr(nodeIndex);
+        break;
+      end;
+  end;
+
+
+var
+  node: IXMLNode;
+  nodeCollection: IXMLNodeCollection;
+
+begin
+  Result := '';
+
+  node := AParent;
+  while Assigned(node) and Assigned(node.ParentNode) do
+  begin
+    if Length(Result) > 0 then
+      Result := '.' + Result;
+
+    if Supports(node.ParentNode, IXMLNodeCollection, nodeCollection) then
+      Result := Result + '[' + GetNodeIndex(nodeCollection, node) + ']';
+
+
+    Result := node.NodeName + Result;
+    node := node.ParentNode;
+  end;
+
+  if Length(Result) > 0 then
+    Result := Result + '.';
+
+  Result := Result + AName;
+end;
+
+
+function TXSDValidateStrictResult.GetMissingAttributes: TStrings;
+begin
+  if not Assigned(FMissingAttributes) then
+    FMissingAttributes := TStringList.Create;
+
+  Result := FMissingAttributes;
 end;
 
 end.
