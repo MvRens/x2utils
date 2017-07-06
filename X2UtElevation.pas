@@ -336,11 +336,11 @@ begin
     end;
   except
     on E: Exception do
-      {$IFDEF VER230}
+      {$IF CompilerVersion >= 23}
       raise EOleRegistrationError.Create(E.Message, 0, 0);
       {$ELSE}
       raise EOleRegistrationError.Create(E.Message);
-      {$ENDIF}
+      {$IFEND}
   end;
 end;
 
