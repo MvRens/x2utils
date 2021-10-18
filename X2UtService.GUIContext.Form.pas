@@ -38,6 +38,7 @@ type
     FServiceThread: TThread;
     FAllowClose: Boolean;
   protected
+    destructor Destroy; override;
     procedure DoShow; override;
 
     procedure UpdatePredefinedControlCodes; virtual;
@@ -112,6 +113,12 @@ begin
   btnClose.Left := (ClientWidth - btnClose.Width) div 2;
 end;
 
+destructor TX2ServiceContextGUIForm.Destroy;
+begin
+  if Assigned(FServiceThread) then
+    FreeAndNil(FServiceThread);
+  inherited Destroy;
+end;
 
 procedure TX2ServiceContextGUIForm.DoShow;
 var
