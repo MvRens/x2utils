@@ -38,7 +38,6 @@ type
     FServiceThread: TThread;
     FAllowClose: Boolean;
   protected
-    destructor Destroy; override;
     procedure DoShow; override;
 
     procedure UpdatePredefinedControlCodes; virtual;
@@ -48,6 +47,8 @@ type
 
     property ServiceThread: TThread read FServiceThread;
   public
+    destructor Destroy; override;
+    
     property Context: IX2ServiceContext read FContext write FContext;
     property Service: IX2Service read FService write FService;
   end;
