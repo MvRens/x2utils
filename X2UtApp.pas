@@ -418,33 +418,43 @@ procedure TX2App.GetPath();
                (APath);
   end;
 
-var
-  ifMalloc:       IMalloc;
-  pIDL:           PItemIDList;
-  cPath:          array[0..MAX_PATH] of Char;
+  {$IFNDEF DXE2PLUS}
+  procedure GetPaths;
+  var
+    ifMalloc:       IMalloc;
+    pIDL:           PItemIDList;
+    cPath:          array[0..MAX_PATH] of Char;
+  begin
+    SHGetMalloc(ifMalloc);
+    try
+      FillChar(cPath, SizeOf(cPath), #0);
+      SHGetSpecialFolderLocation(0, CSIDL_APPDATA, pIDL);
+      SHGetPathFromIDList(pIDL, @cPath);
+
+      FUserPath := FixPath(cPath);
+
+      cPath := '';
+      FillChar(cPath, SizeOf(cPath), #0);
+      SHGetSpecialFolderLocation(0, CSIDL_COMMON_APPDATA, pIDL);
+      SHGetPathFromIDList(pIDL, @cPath);
+
+      FProgramDataPath := FixPath(cPath);
+    finally
+      ifMalloc  := nil;
+    end;
+  end;
+  {$ENDIF}
 
 begin
   FFileName := GetModule(SysInit.HInstance);
   FPath     := FixPath(ExtractFilePath(FFileName));
   FMainPath := FixPath(ExtractFilePath(GetModule(0)));
-
-  SHGetMalloc(ifMalloc);
-  try
-    FillChar(cPath, SizeOf(cPath), #0);
-    SHGetSpecialFolderLocation(0, CSIDL_APPDATA, pIDL);
-    SHGetPathFromIDList(pIDL, @cPath);
-
-    FUserPath := FixPath(cPath);
-
-
-    FillChar(cPath, SizeOf(cPath), #0);
-    SHGetSpecialFolderLocation(0, CSIDL_COMMON_APPDATA, pIDL);
-    SHGetPathFromIDList(pIDL, @cPath);
-
-    FProgramDataPath := FixPath(cPath);
-  finally
-    ifMalloc  := nil;
-  end;
+  {$IFDEF DXE2PLUS}
+  FUserPath := FixPath(System.IOUtils.TPath.GetHomePath);
+  FProgramDataPath := FixPath(System.IOUtils.TPath.GetPublicPath);
+  {$ELSE}
+  GetPaths;
+  {$ENDIF}
 end;
 
 
