@@ -200,6 +200,7 @@ uses
   ShlObj,
   SysUtils,
   TypInfo,
+  System.IOUtils,
   Windows;
 
 const
