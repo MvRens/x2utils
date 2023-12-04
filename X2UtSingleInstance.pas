@@ -300,7 +300,7 @@ begin
 
   { Attempt to create shared memory }
   SetLastError(0);
-  FFileMapping  := CreateFileMapping($FFFFFFFF, nil, PAGE_READWRITE, 0,
+  FFileMapping  := CreateFileMapping(INVALID_HANDLE_VALUE, nil, PAGE_READWRITE, 0,
                                      SizeOf(TX2InstanceMapData),
                                      PChar(ScopePrefix[Global] +
                                            'SingleInstance.' + ApplicationID));
@@ -330,8 +330,7 @@ begin
       if FileMapData^.Window = 0 then
         RaiseLastOSError();
 
-      SetWindowLong(FileMapData^.Window, GWL_WNDPROC,
-                    Integer(MakeObjectInstance(WindowProc)));
+      SetWindowLongPtr(FileMapData^.Window, GWL_WNDPROC, NativeInt(MakeObjectInstance(WindowProc)));
     end;
 
     Inc(FFileMapData^.RefCount);
