@@ -329,6 +329,8 @@ end;
 
 procedure TX2ServiceThread.TerminatedSet;
 begin
+  Service.Stop;
+
   inherited TerminatedSet;
 
   WakeEvent.SetEvent;
